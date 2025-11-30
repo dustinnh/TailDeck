@@ -27,6 +27,9 @@ const serverEnvSchema = z.object({
   HEADSCALE_URL: z.string().url('HEADSCALE_URL must be a valid URL'),
   HEADSCALE_API_KEY: z.string().min(1, 'HEADSCALE_API_KEY is required'),
 
+  // Optional: Headscale metrics endpoint (for future observability features)
+  HEADSCALE_METRICS_URL: z.string().url().optional(),
+
   // Optional: Logging
   LOG_LEVEL: z.enum(['trace', 'debug', 'info', 'warn', 'error', 'fatal']).default('info'),
 });

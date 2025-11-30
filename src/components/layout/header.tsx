@@ -29,6 +29,7 @@ const NAV_ITEMS: NavItem[] = [
   { href: '/my-devices' as Route, label: 'My Devices' },
   { href: '/machines' as Route, label: 'Machines', minRole: 'OPERATOR' },
   { href: '/routes' as Route, label: 'Routes', minRole: 'OPERATOR' },
+  { href: '/health' as Route, label: 'Health' },
   { href: '/devices/add' as Route, label: 'Add Device', minRole: 'OPERATOR' },
   { href: '/dns' as Route, label: 'DNS', minRole: 'ADMIN' },
   { href: '/policies' as Route, label: 'Policies', minRole: 'ADMIN' },
