@@ -146,6 +146,46 @@ export function DNSClient() {
   }
 
   if (error) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    const isNotSupported = errorMessage.includes('Not Found') || errorMessage.includes('404');
+
+    if (isNotSupported) {
+      return (
+        <Card>
+          <CardHeader>
+            <CardTitle>DNS Configuration</CardTitle>
+            <CardDescription>DNS API not available in your Headscale version</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <Alert>
+              <AlertTitle>Configuration via config file</AlertTitle>
+              <AlertDescription>
+                Headscale v0.23 does not expose DNS settings through the REST API. DNS settings must
+                be configured directly in your Headscale <code>config.yaml</code> file.
+              </AlertDescription>
+            </Alert>
+            <div className="rounded-lg bg-muted p-4">
+              <h4 className="mb-2 font-medium">Example DNS configuration:</h4>
+              <pre className="overflow-x-auto text-sm">
+                {`dns:
+  base_domain: example.com
+  magic_dns: true
+  nameservers:
+    global:
+      - 1.1.1.1
+      - 8.8.8.8
+  search_domains:
+    - example.com`}
+              </pre>
+            </div>
+            <p className="text-sm text-muted-foreground">
+              After updating your config file, restart Headscale for changes to take effect.
+            </p>
+          </CardContent>
+        </Card>
+      );
+    }
+
     return (
       <Card className="border-destructive">
         <CardHeader>
@@ -153,9 +193,7 @@ export function DNSClient() {
           <CardDescription>Failed to fetch DNS configuration from Headscale</CardDescription>
         </CardHeader>
         <CardContent>
-          <p className="mb-4 text-sm text-muted-foreground">
-            {error instanceof Error ? error.message : 'Unknown error'}
-          </p>
+          <p className="mb-4 text-sm text-muted-foreground">{errorMessage}</p>
           <Button onClick={() => refetch()}>Retry</Button>
         </CardContent>
       </Card>

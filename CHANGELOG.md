@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Toast notifications for all mutation operations (using sonner)
+- Loading spinners on action buttons during pending state
+- Tag filter dropdown on Machines page
+- Search and status filtering on My Devices page
+- Clear filters button on Machines, My Devices, and Routes pages
+- Helpful admin message on My Devices page directing to Machines page
+
+### Changed
+
+- DNS page now shows helpful configuration guide when API not available
+- Improved error messages with actual error details from Headscale API
+
+### Fixed
+
+- API keys page error when `lastSeen` is null (schema validation)
+- DNS page error handling for unsupported Headscale versions
+
 ## [0.1.0] - 2024-11-30
 
 ### Added

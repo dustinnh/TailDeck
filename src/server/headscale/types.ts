@@ -190,7 +190,7 @@ export interface HeadscaleApiKey {
   prefix: string;
   expiration: Timestamp;
   createdAt: Timestamp;
-  lastSeen?: Timestamp;
+  lastSeen?: Timestamp | null;
 }
 
 /**

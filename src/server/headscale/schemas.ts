@@ -460,7 +460,7 @@ const headscaleApiKeyRawSchema = z.object({
   prefix: z.string(),
   expiration: timestampSchema,
   createdAt: timestampSchema,
-  lastSeen: timestampSchema.optional(),
+  lastSeen: timestampSchema.nullable().optional(),
 });
 
 export const headscaleApiKeySchema = headscaleApiKeyRawSchema.transform((data) => ({

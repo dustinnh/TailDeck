@@ -2,9 +2,11 @@
 
 import { formatDistanceToNow } from 'date-fns';
 import { X } from 'lucide-react';
+import Link from 'next/link';
 import { useSession } from 'next-auth/react';
 import { useState, useMemo } from 'react';
 
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -24,6 +26,21 @@ function formatTimestamp(timestamp: { seconds: string; nanos: number }): Date {
   return new Date(ms);
 }
 
+type RoleName = 'OWNER' | 'ADMIN' | 'OPERATOR' | 'AUDITOR' | 'USER';
+
+const ROLE_HIERARCHY: Record<RoleName, number> = {
+  OWNER: 100,
+  ADMIN: 80,
+  OPERATOR: 60,
+  AUDITOR: 40,
+  USER: 20,
+};
+
+function hasMinRole(userRoles: RoleName[], minRole: RoleName): boolean {
+  const minLevel = ROLE_HIERARCHY[minRole];
+  return userRoles.some((role) => ROLE_HIERARCHY[role] >= minLevel);
+}
+
 export function MyDevicesClient() {
   const { data: session } = useSession();
   const { data: nodes, isLoading, error, refetch } = useNodes();
@@ -31,7 +48,9 @@ export function MyDevicesClient() {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'online' | 'offline'>('all');
 
-  // Get current user's email to filter devices
+  // Get user roles and email
+  const userRoles = (session?.user?.roles ?? []) as RoleName[];
+  const isAdmin = hasMinRole(userRoles, 'OPERATOR');
   const userEmail = session?.user?.email;
 
   // Filter to show only devices that might belong to the current user
@@ -98,6 +117,30 @@ export function MyDevicesClient() {
   }
 
   if (myDevices.length === 0 && !showGetStarted) {
+    // For admins, show helpful message pointing to Machines page
+    if (isAdmin && nodes && nodes.length > 0) {
+      return (
+        <div className="space-y-6">
+          <Alert>
+            <AlertTitle>No personal devices found</AlertTitle>
+            <AlertDescription>
+              This page shows devices registered under your username. As an administrator, you can
+              view and manage all {nodes.length} network device{nodes.length !== 1 ? 's' : ''} on
+              the Machines page.
+            </AlertDescription>
+          </Alert>
+          <div className="flex gap-4">
+            <Button asChild>
+              <Link href="/machines">Go to Machines</Link>
+            </Button>
+            <Button variant="outline" onClick={() => setShowGetStarted(true)}>
+              Register a Device
+            </Button>
+          </div>
+        </div>
+      );
+    }
+
     return (
       <Card>
         <CardHeader>

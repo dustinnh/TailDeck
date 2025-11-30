@@ -125,8 +125,8 @@ function handleHeadscaleError(error: unknown, childLogger: typeof logger, reques
     }
 
     return NextResponse.json(
-      { error: 'Failed to complete operation' },
-      { status: 502, headers: { 'X-Request-ID': requestId } }
+      { error: error.message || 'Failed to complete operation' },
+      { status: error.statusCode || 502, headers: { 'X-Request-ID': requestId } }
     );
   }
 

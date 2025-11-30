@@ -27,7 +27,7 @@ export interface ApiKey {
   prefix: string;
   expiration: Timestamp;
   createdAt: Timestamp;
-  lastSeen?: Timestamp;
+  lastSeen?: Timestamp | null;
 }
 
 /**

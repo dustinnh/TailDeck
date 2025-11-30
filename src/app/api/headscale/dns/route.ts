@@ -132,9 +132,16 @@ function handleHeadscaleError(error: unknown, childLogger: typeof logger, reques
       );
     }
 
+    if (error.statusCode === 404 || error.message?.includes('Not Found')) {
+      return NextResponse.json(
+        { error: 'Not Found - DNS API not available in this Headscale version' },
+        { status: 404, headers: { 'X-Request-ID': requestId } }
+      );
+    }
+
     return NextResponse.json(
-      { error: 'Failed to complete operation' },
-      { status: 502, headers: { 'X-Request-ID': requestId } }
+      { error: error.message || 'Failed to complete operation' },
+      { status: error.statusCode || 502, headers: { 'X-Request-ID': requestId } }
     );
   }
 
