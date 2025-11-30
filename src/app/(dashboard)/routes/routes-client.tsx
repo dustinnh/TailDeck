@@ -1,5 +1,6 @@
 'use client';
 
+import { X } from 'lucide-react';
 import { useSession } from 'next-auth/react';
 import { useState } from 'react';
 
@@ -53,6 +54,13 @@ export function RoutesClient() {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'enabled' | 'disabled'>('all');
   const [nodeFilter, setNodeFilter] = useState<string>('all');
+
+  const hasActiveFilters = search !== '' || statusFilter !== 'all' || nodeFilter !== 'all';
+  const clearFilters = () => {
+    setSearch('');
+    setStatusFilter('all');
+    setNodeFilter('all');
+  };
 
   if (isLoading) {
     return <RoutesClientSkeleton />;
@@ -207,6 +215,12 @@ export function RoutesClient() {
               ))}
             </SelectContent>
           </Select>
+          {hasActiveFilters && (
+            <Button variant="ghost" size="sm" onClick={clearFilters}>
+              <X className="mr-1 h-4 w-4" />
+              Clear
+            </Button>
+          )}
         </div>
 
         {/* Exit Nodes Tab */}

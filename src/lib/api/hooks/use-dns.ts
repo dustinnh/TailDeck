@@ -7,6 +7,7 @@
 'use client';
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { toast } from 'sonner';
 
 import { queryKeys } from '../query-keys';
 
@@ -87,11 +88,16 @@ export function useUpdateDNS() {
       return { previousDNS };
     },
 
-    onError: (_err, _vars, context) => {
+    onError: (err, _vars, context) => {
       // Rollback on error
       if (context?.previousDNS) {
         queryClient.setQueryData(queryKeys.dns.config(), context.previousDNS);
       }
+      toast.error(err instanceof Error ? err.message : 'Failed to update DNS configuration');
+    },
+
+    onSuccess: () => {
+      toast.success('DNS configuration updated');
     },
 
     onSettled: () => {

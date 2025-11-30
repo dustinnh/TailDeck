@@ -7,6 +7,7 @@
 'use client';
 
 import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { toast } from 'sonner';
 
 import { queryKeys } from '../query-keys';
 
@@ -127,10 +128,20 @@ export function useBulkOperation() {
       return { previousNodes };
     },
 
-    onError: (_err, _request, context) => {
+    onError: (err, _request, context) => {
       // Rollback on error
       if (context?.previousNodes) {
         queryClient.setQueryData(queryKeys.nodes.list(), context.previousNodes);
+      }
+      toast.error(err instanceof Error ? err.message : 'Bulk operation failed');
+    },
+
+    onSuccess: (data, request) => {
+      const { succeeded, failed } = data.summary;
+      if (failed > 0) {
+        toast.warning(`Bulk ${request.action}: ${succeeded} succeeded, ${failed} failed`);
+      } else {
+        toast.success(`Bulk ${request.action} completed: ${succeeded} nodes`);
       }
     },
 

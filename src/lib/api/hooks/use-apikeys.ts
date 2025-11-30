@@ -7,6 +7,7 @@
 'use client';
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { toast } from 'sonner';
 
 import { queryKeys } from '../query-keys';
 
@@ -97,6 +98,12 @@ export function useCreateApiKey() {
 
   return useMutation({
     mutationFn: (expiration?: string) => api.createApiKey(expiration),
+    onError: (err) => {
+      toast.error(err instanceof Error ? err.message : 'Failed to create API key');
+    },
+    onSuccess: () => {
+      toast.success('API key created');
+    },
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.apiKeys.all });
     },
@@ -111,6 +118,12 @@ export function useExpireApiKey() {
 
   return useMutation({
     mutationFn: (prefix: string) => api.expireApiKey(prefix),
+    onError: (err) => {
+      toast.error(err instanceof Error ? err.message : 'Failed to expire API key');
+    },
+    onSuccess: () => {
+      toast.success('API key expired');
+    },
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.apiKeys.all });
     },
@@ -141,10 +154,15 @@ export function useDeleteApiKey() {
       return { previousKeys };
     },
 
-    onError: (_err, _prefix, context) => {
+    onError: (err, _prefix, context) => {
       if (context?.previousKeys) {
         queryClient.setQueryData(queryKeys.apiKeys.list(), context.previousKeys);
       }
+      toast.error(err instanceof Error ? err.message : 'Failed to delete API key');
+    },
+
+    onSuccess: () => {
+      toast.success('API key deleted');
     },
 
     onSettled: () => {

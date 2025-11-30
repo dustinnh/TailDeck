@@ -1,6 +1,6 @@
 'use client';
 
-import { Plus, X, Trash2 } from 'lucide-react';
+import { Plus, X, Trash2, Loader2 } from 'lucide-react';
 import { useSession } from 'next-auth/react';
 import { useState, useEffect } from 'react';
 
@@ -323,6 +323,7 @@ export function DNSClient() {
         <div className="flex items-center gap-4">
           {isDirty && <span className="text-sm text-muted-foreground">Unsaved changes</span>}
           <Button onClick={handleSave} disabled={!isDirty || updateMutation.isPending}>
+            {updateMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             {updateMutation.isPending ? 'Saving...' : 'Save Settings'}
           </Button>
         </div>

@@ -7,6 +7,7 @@
 'use client';
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { toast } from 'sonner';
 
 import { queryKeys } from '../query-keys';
 
@@ -193,7 +194,7 @@ export function useRenameNode() {
       return { previousNodes, previousNode };
     },
 
-    onError: (_err, { id }, context) => {
+    onError: (err, { id }, context) => {
       // Rollback on error
       if (context?.previousNodes) {
         queryClient.setQueryData(queryKeys.nodes.list(), context.previousNodes);
@@ -201,6 +202,11 @@ export function useRenameNode() {
       if (context?.previousNode) {
         queryClient.setQueryData(queryKeys.nodes.detail(id), context.previousNode);
       }
+      toast.error(err instanceof Error ? err.message : 'Failed to rename node');
+    },
+
+    onSuccess: () => {
+      toast.success('Node renamed successfully');
     },
 
     onSettled: (_data, _err, { id }) => {
@@ -235,10 +241,15 @@ export function useUpdateNodeTags() {
       return { previousNodes };
     },
 
-    onError: (_err, _vars, context) => {
+    onError: (err, _vars, context) => {
       if (context?.previousNodes) {
         queryClient.setQueryData(queryKeys.nodes.list(), context.previousNodes);
       }
+      toast.error(err instanceof Error ? err.message : 'Failed to update tags');
+    },
+
+    onSuccess: () => {
+      toast.success('Tags updated successfully');
     },
 
     onSettled: () => {
@@ -255,6 +266,12 @@ export function useExpireNode() {
 
   return useMutation({
     mutationFn: (id: string) => api.expireNode(id),
+    onError: (err) => {
+      toast.error(err instanceof Error ? err.message : 'Failed to expire node');
+    },
+    onSuccess: () => {
+      toast.success('Node expired successfully');
+    },
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.nodes.all });
     },
@@ -285,10 +302,15 @@ export function useDeleteNode() {
       return { previousNodes };
     },
 
-    onError: (_err, _id, context) => {
+    onError: (err, _id, context) => {
       if (context?.previousNodes) {
         queryClient.setQueryData(queryKeys.nodes.list(), context.previousNodes);
       }
+      toast.error(err instanceof Error ? err.message : 'Failed to delete node');
+    },
+
+    onSuccess: () => {
+      toast.success('Node deleted successfully');
     },
 
     onSettled: () => {
@@ -323,10 +345,15 @@ export function useMoveNode() {
       return { previousNodes };
     },
 
-    onError: (_err, _vars, context) => {
+    onError: (err, _vars, context) => {
       if (context?.previousNodes) {
         queryClient.setQueryData(queryKeys.nodes.list(), context.previousNodes);
       }
+      toast.error(err instanceof Error ? err.message : 'Failed to move node');
+    },
+
+    onSuccess: () => {
+      toast.success('Node moved successfully');
     },
 
     onSettled: () => {
@@ -343,6 +370,14 @@ export function useSetNodeExpiry() {
 
   return useMutation({
     mutationFn: ({ id, expiry }: { id: string; expiry: string }) => api.setExpiry(id, expiry),
+
+    onError: (err) => {
+      toast.error(err instanceof Error ? err.message : 'Failed to set expiry');
+    },
+
+    onSuccess: () => {
+      toast.success('Expiry updated successfully');
+    },
 
     onSettled: (_data, _err, { id }) => {
       queryClient.invalidateQueries({ queryKey: queryKeys.nodes.list() });

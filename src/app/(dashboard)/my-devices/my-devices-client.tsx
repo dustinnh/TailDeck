@@ -1,12 +1,21 @@
 'use client';
 
 import { formatDistanceToNow } from 'date-fns';
+import { X } from 'lucide-react';
 import { useSession } from 'next-auth/react';
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useNodes, type Node } from '@/lib/api/hooks/use-nodes';
 
@@ -19,9 +28,53 @@ export function MyDevicesClient() {
   const { data: session } = useSession();
   const { data: nodes, isLoading, error, refetch } = useNodes();
   const [showGetStarted, setShowGetStarted] = useState(false);
+  const [search, setSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'online' | 'offline'>('all');
 
   // Get current user's email to filter devices
   const userEmail = session?.user?.email;
+
+  // Filter to show only devices that might belong to the current user
+  const myDevices = useMemo(() => {
+    return (
+      nodes?.filter((node) => {
+        const emailPrefix = userEmail?.split('@')[0]?.toLowerCase();
+        return (
+          emailPrefix &&
+          (node.user.name.toLowerCase().includes(emailPrefix) ||
+            node.givenName?.toLowerCase().includes(emailPrefix) ||
+            node.name.toLowerCase().includes(emailPrefix))
+        );
+      }) ?? []
+    );
+  }, [nodes, userEmail]);
+
+  // Apply search and status filters
+  const filteredDevices = useMemo(() => {
+    return myDevices.filter((device) => {
+      // Search filter
+      const searchLower = search.toLowerCase();
+      const matchesSearch =
+        search === '' ||
+        device.name.toLowerCase().includes(searchLower) ||
+        device.givenName?.toLowerCase().includes(searchLower) ||
+        device.ipAddresses.some((ip) => ip.includes(searchLower));
+
+      // Status filter
+      const matchesStatus =
+        statusFilter === 'all' ||
+        (statusFilter === 'online' && device.online) ||
+        (statusFilter === 'offline' && !device.online);
+
+      return matchesSearch && matchesStatus;
+    });
+  }, [myDevices, search, statusFilter]);
+
+  const hasActiveFilters = search !== '' || statusFilter !== 'all';
+  const clearFilters = () => {
+    setSearch('');
+    setStatusFilter('all');
+  };
 
   if (isLoading) {
     return <MyDevicesSkeleton />;
@@ -43,20 +96,6 @@ export function MyDevicesClient() {
       </Card>
     );
   }
-
-  // Filter to show only devices that might belong to the current user
-  // This is a basic implementation - in production, you'd have better user-device mapping
-  const myDevices =
-    nodes?.filter((node) => {
-      // Match by user name containing the email prefix
-      const emailPrefix = userEmail?.split('@')[0]?.toLowerCase();
-      return (
-        emailPrefix &&
-        (node.user.name.toLowerCase().includes(emailPrefix) ||
-          node.givenName?.toLowerCase().includes(emailPrefix) ||
-          node.name.toLowerCase().includes(emailPrefix))
-      );
-    }) ?? [];
 
   if (myDevices.length === 0 && !showGetStarted) {
     return (
@@ -136,10 +175,45 @@ export function MyDevicesClient() {
             </div>
           </CardHeader>
           <CardContent>
+            {/* Filters */}
+            <div className="mb-4 flex flex-wrap gap-4">
+              <div className="min-w-[200px] flex-1">
+                <Input
+                  placeholder="Search by name or IP..."
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                />
+              </div>
+              <Select
+                value={statusFilter}
+                onValueChange={(v) => setStatusFilter(v as 'all' | 'online' | 'offline')}
+              >
+                <SelectTrigger className="w-[130px]">
+                  <SelectValue placeholder="Status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Status</SelectItem>
+                  <SelectItem value="online">Online</SelectItem>
+                  <SelectItem value="offline">Offline</SelectItem>
+                </SelectContent>
+              </Select>
+              {hasActiveFilters && (
+                <Button variant="ghost" size="sm" onClick={clearFilters}>
+                  <X className="mr-1 h-4 w-4" />
+                  Clear
+                </Button>
+              )}
+            </div>
+
+            {/* Device List */}
             <div className="space-y-4">
-              {myDevices.map((device) => (
-                <DeviceCard key={device.id} device={device} />
-              ))}
+              {filteredDevices.length > 0 ? (
+                filteredDevices.map((device) => <DeviceCard key={device.id} device={device} />)
+              ) : (
+                <div className="py-8 text-center text-muted-foreground">
+                  No devices match your filters
+                </div>
+              )}
             </div>
           </CardContent>
         </Card>

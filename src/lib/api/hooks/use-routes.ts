@@ -7,6 +7,7 @@
 'use client';
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { toast } from 'sonner';
 
 import { queryKeys } from '../query-keys';
 
@@ -100,10 +101,15 @@ export function useToggleRoute() {
       return { previousRoutes };
     },
 
-    onError: (_err, _vars, context) => {
+    onError: (err, _vars, context) => {
       if (context?.previousRoutes) {
         queryClient.setQueryData(queryKeys.routes.list(), context.previousRoutes);
       }
+      toast.error(err instanceof Error ? err.message : 'Failed to toggle route');
+    },
+
+    onSuccess: (_, { enabled }) => {
+      toast.success(enabled ? 'Route enabled' : 'Route disabled');
     },
 
     onSettled: () => {

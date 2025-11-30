@@ -1,7 +1,7 @@
 'use client';
 
 import { formatDistanceToNow } from 'date-fns';
-import { Trash2, Clock, UserPlus, Tag } from 'lucide-react';
+import { Trash2, Clock, UserPlus, Tag, Loader2, X } from 'lucide-react';
 import { useSession } from 'next-auth/react';
 import { useState } from 'react';
 
@@ -93,6 +93,7 @@ export function MachinesClient() {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'online' | 'offline'>('all');
   const [userFilter, setUserFilter] = useState<string>('all');
+  const [tagFilter, setTagFilter] = useState<string>('all');
 
   // Selection state for bulk operations
   const [selectedNodes, setSelectedNodes] = useState<Set<string>>(new Set());
@@ -182,8 +183,23 @@ export function MachinesClient() {
     );
   }
 
-  // Get unique users for filter
+  // Get unique users and tags for filter
   const users = Array.from(new Set(nodes.map((n) => n.user.name))).sort();
+  const allTags = Array.from(
+    new Set(nodes.flatMap((n) => n.forcedTags.map((t) => t.replace(/^tag:/, ''))))
+  ).sort();
+
+  // Check if any filters are active
+  const hasActiveFilters =
+    search !== '' || statusFilter !== 'all' || userFilter !== 'all' || tagFilter !== 'all';
+
+  // Clear all filters
+  const clearFilters = () => {
+    setSearch('');
+    setStatusFilter('all');
+    setUserFilter('all');
+    setTagFilter('all');
+  };
 
   // Filter nodes
   const filteredNodes = nodes.filter((node) => {
@@ -201,7 +217,11 @@ export function MachinesClient() {
 
     const matchesUser = userFilter === 'all' || node.user.name === userFilter;
 
-    return matchesSearch && matchesStatus && matchesUser;
+    const matchesTag =
+      tagFilter === 'all' ||
+      node.forcedTags.some((t) => t === `tag:${tagFilter}` || t === tagFilter);
+
+    return matchesSearch && matchesStatus && matchesUser && matchesTag;
   });
 
   const onlineCount = nodes.filter((n) => n.online).length;
@@ -431,6 +451,27 @@ export function MachinesClient() {
                 ))}
               </SelectContent>
             </Select>
+            {allTags.length > 0 && (
+              <Select value={tagFilter} onValueChange={setTagFilter}>
+                <SelectTrigger className="w-[150px]">
+                  <SelectValue placeholder="Tag" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Tags</SelectItem>
+                  {allTags.map((tag) => (
+                    <SelectItem key={tag} value={tag}>
+                      {tag}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+            {hasActiveFilters && (
+              <Button variant="ghost" size="sm" onClick={clearFilters}>
+                <X className="mr-1 h-4 w-4" />
+                Clear
+              </Button>
+            )}
           </div>
 
           {/* Bulk Result Alert */}
@@ -711,6 +752,7 @@ export function MachinesClient() {
               onClick={handleRename}
               disabled={renameNode.isPending || !renameDialog.newName.trim()}
             >
+              {renameNode.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               {renameNode.isPending ? 'Saving...' : 'Save'}
             </Button>
           </DialogFooter>
@@ -751,6 +793,7 @@ export function MachinesClient() {
               Cancel
             </Button>
             <Button onClick={handleUpdateTags} disabled={updateTags.isPending}>
+              {updateTags.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               {updateTags.isPending ? 'Saving...' : 'Save'}
             </Button>
           </DialogFooter>
@@ -776,6 +819,7 @@ export function MachinesClient() {
               Cancel
             </Button>
             <Button variant="destructive" onClick={handleExpire} disabled={expireNode.isPending}>
+              {expireNode.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               {expireNode.isPending ? 'Expiring...' : 'Expire'}
             </Button>
           </DialogFooter>
@@ -801,6 +845,7 @@ export function MachinesClient() {
               Cancel
             </Button>
             <Button variant="destructive" onClick={handleDelete} disabled={deleteNode.isPending}>
+              {deleteNode.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               {deleteNode.isPending ? 'Deleting...' : 'Delete'}
             </Button>
           </DialogFooter>
@@ -848,6 +893,7 @@ export function MachinesClient() {
               Cancel
             </Button>
             <Button onClick={handleMove} disabled={moveNode.isPending || !moveDialog.newUser}>
+              {moveNode.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               {moveNode.isPending ? 'Moving...' : 'Move'}
             </Button>
           </DialogFooter>
@@ -873,6 +919,7 @@ export function MachinesClient() {
               onClick={handleBulkDelete}
               disabled={bulkOperation.isPending}
             >
+              {bulkOperation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               {bulkOperation.isPending ? 'Deleting...' : 'Delete All'}
             </Button>
           </DialogFooter>
@@ -898,6 +945,7 @@ export function MachinesClient() {
               onClick={handleBulkExpire}
               disabled={bulkOperation.isPending}
             >
+              {bulkOperation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               {bulkOperation.isPending ? 'Expiring...' : 'Expire All'}
             </Button>
           </DialogFooter>
@@ -948,6 +996,7 @@ export function MachinesClient() {
               onClick={handleBulkMove}
               disabled={bulkOperation.isPending || !bulkMoveDialog.newUser}
             >
+              {bulkOperation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               {bulkOperation.isPending ? 'Moving...' : 'Move All'}
             </Button>
           </DialogFooter>
@@ -987,6 +1036,7 @@ export function MachinesClient() {
               Cancel
             </Button>
             <Button onClick={handleBulkTags} disabled={bulkOperation.isPending}>
+              {bulkOperation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               {bulkOperation.isPending ? 'Updating...' : 'Set Tags'}
             </Button>
           </DialogFooter>

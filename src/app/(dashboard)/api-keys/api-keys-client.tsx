@@ -1,7 +1,7 @@
 'use client';
 
 import { formatDistanceToNow, format, addDays, isPast } from 'date-fns';
-import { Plus, Copy, Trash2, Clock, Key, AlertTriangle } from 'lucide-react';
+import { Plus, Copy, Trash2, Clock, Key, AlertTriangle, Loader2 } from 'lucide-react';
 import { useSession } from 'next-auth/react';
 import { useState } from 'react';
 
@@ -311,6 +311,7 @@ export function ApiKeysClient() {
               Cancel
             </Button>
             <Button onClick={handleCreateKey} disabled={createMutation.isPending}>
+              {createMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               {createMutation.isPending ? 'Creating...' : 'Create Key'}
             </Button>
           </DialogFooter>
@@ -373,6 +374,7 @@ export function ApiKeysClient() {
               onClick={handleDeleteKey}
               disabled={deleteMutation.isPending}
             >
+              {deleteMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               {deleteMutation.isPending ? 'Deleting...' : 'Delete Key'}
             </Button>
           </DialogFooter>
