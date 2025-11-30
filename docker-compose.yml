@@ -1,0 +1,196 @@
+version: "3.8"
+
+# =============================================
+# TailDeck Docker Compose
+#
+# Usage:
+#   Development (external Next.js):
+#     docker compose up -d
+#     npm run dev
+#
+#   Full stack (containerized):
+#     docker compose --profile app up -d
+#
+# =============================================
+
+services:
+  # ===========================================
+  # TailDeck PostgreSQL Database
+  # ===========================================
+  postgres:
+    image: postgres:16-alpine
+    container_name: taildeck-postgres
+    environment:
+      POSTGRES_USER: taildeck
+      POSTGRES_PASSWORD: taildeck_dev
+      POSTGRES_DB: taildeck
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U taildeck"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  # ===========================================
+  # Authentik PostgreSQL (separate database)
+  # ===========================================
+  authentik-postgres:
+    image: postgres:16-alpine
+    container_name: authentik-postgres
+    environment:
+      POSTGRES_USER: authentik
+      POSTGRES_PASSWORD: authentik_dev
+      POSTGRES_DB: authentik
+    volumes:
+      - authentik_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U authentik"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  # ===========================================
+  # Redis (required by Authentik)
+  # ===========================================
+  redis:
+    image: redis:7-alpine
+    container_name: taildeck-redis
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  # ===========================================
+  # Authentik Server (OIDC Provider)
+  # Access at: http://localhost:9000
+  # Initial setup: http://localhost:9000/if/flow/initial-setup/
+  # ===========================================
+  authentik-server:
+    image: ghcr.io/goauthentik/server:2024.2.2
+    container_name: authentik-server
+    command: server
+    environment:
+      AUTHENTIK_SECRET_KEY: "taildeck-dev-secret-key-change-in-production"
+      AUTHENTIK_REDIS__HOST: redis
+      AUTHENTIK_POSTGRESQL__HOST: authentik-postgres
+      AUTHENTIK_POSTGRESQL__USER: authentik
+      AUTHENTIK_POSTGRESQL__PASSWORD: authentik_dev
+      AUTHENTIK_POSTGRESQL__NAME: authentik
+    ports:
+      - "9000:9000"
+      - "9443:9443"
+    volumes:
+      - authentik_media:/media
+      - authentik_templates:/templates
+    depends_on:
+      authentik-postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # ===========================================
+  # Authentik Worker (background tasks)
+  # ===========================================
+  authentik-worker:
+    image: ghcr.io/goauthentik/server:2024.2.2
+    container_name: authentik-worker
+    command: worker
+    environment:
+      AUTHENTIK_SECRET_KEY: "taildeck-dev-secret-key-change-in-production"
+      AUTHENTIK_REDIS__HOST: redis
+      AUTHENTIK_POSTGRESQL__HOST: authentik-postgres
+      AUTHENTIK_POSTGRESQL__USER: authentik
+      AUTHENTIK_POSTGRESQL__PASSWORD: authentik_dev
+      AUTHENTIK_POSTGRESQL__NAME: authentik
+    volumes:
+      - authentik_media:/media
+      - authentik_templates:/templates
+      - /var/run/docker.sock:/var/run/docker.sock
+    depends_on:
+      authentik-postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # ===========================================
+  # Headscale (Mesh VPN Coordinator)
+  # Access API at: http://localhost:8080
+  # ===========================================
+  headscale:
+    image: headscale/headscale:0.23
+    container_name: headscale
+    command: serve
+    ports:
+      - "8080:8080"
+      - "9090:9090"
+    volumes:
+      - ./headscale/config.yaml:/etc/headscale/config.yaml:ro
+      - headscale_data:/var/lib/headscale
+    healthcheck:
+      test: ["CMD", "headscale", "health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    restart: unless-stopped
+
+  # ===========================================
+  # TailDeck Application (Optional - use profile)
+  # Only starts with: docker compose --profile app up
+  # For development, run: npm run dev instead
+  # ===========================================
+  taildeck:
+    profiles: ["app"]
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: taildeck-app
+    ports:
+      - "3000:3000"
+    environment:
+      # Database (use internal Docker network)
+      DATABASE_URL: "postgresql://taildeck:taildeck_dev@postgres:5432/taildeck"
+      # Auth.js
+      AUTH_SECRET: ${AUTH_SECRET:-change-me-in-production}
+      AUTH_URL: "http://localhost:3000"
+      AUTH_TRUST_HOST: "true"
+      # Authentik OIDC (use Docker internal for server, external for browser)
+      AUTH_AUTHENTIK_ID: ${AUTH_AUTHENTIK_ID:-taildeck}
+      AUTH_AUTHENTIK_SECRET: ${AUTH_AUTHENTIK_SECRET:-}
+      AUTH_AUTHENTIK_ISSUER: "http://authentik-server:9000/application/o/taildeck/"
+      # Headscale (internal network)
+      HEADSCALE_URL: "http://headscale:8080"
+      HEADSCALE_API_KEY: ${HEADSCALE_API_KEY:-}
+      # Logging
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      headscale:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+  authentik_postgres_data:
+  redis_data:
+  authentik_media:
+  authentik_templates:
+  headscale_data:

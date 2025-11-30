@@ -1,0 +1,186 @@
+// TailDeck Prisma Schema
+// This schema supports Auth.js v5 with the Prisma adapter
+// and implements RBAC with hybrid OIDC/database role assignment
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================
+// AUTH.JS REQUIRED MODELS
+// These models are required by @auth/prisma-adapter
+// ============================================
+
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String?   @unique
+  emailVerified DateTime? @map("email_verified")
+  image         String?
+
+  // RBAC fields
+  isActive Boolean @default(true) @map("is_active")
+
+  // Relations
+  accounts  Account[]
+  sessions  Session[]
+  userRoles UserRole[]
+  auditLogs AuditLog[]
+
+  // Timestamps
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("users")
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String  @map("user_id")
+  type              String
+  provider          String
+  providerAccountId String  @map("provider_account_id")
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@map("accounts")
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique @map("session_token")
+  userId       String   @map("user_id")
+  expires      DateTime
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("sessions")
+}
+
+model VerificationToken {
+  identifier String
+  token      String
+  expires    DateTime
+
+  @@unique([identifier, token])
+  @@map("verification_tokens")
+}
+
+// ============================================
+// RBAC MODELS
+// Role-Based Access Control with hybrid OIDC/database assignment
+// ============================================
+
+/// System roles: OWNER, ADMIN, OPERATOR, AUDITOR, USER
+model Role {
+  id          String   @id @default(cuid())
+  name        String   @unique // OWNER, ADMIN, OPERATOR, AUDITOR, USER
+  description String?
+  isSystem    Boolean  @default(false) @map("is_system")
+
+  // Relations
+  permissions RolePermission[]
+  userRoles   UserRole[]
+
+  // Timestamps
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("roles")
+}
+
+/// Granular permissions: resource:action format (e.g., nodes:write, acl:read)
+model Permission {
+  id       String @id @default(cuid())
+  name     String @unique // e.g., "nodes:write", "acl:read"
+  resource String // nodes, routes, acl, users, audit, keys, settings
+  action   String // read, write, delete
+
+  // Relations
+  rolePermissions RolePermission[]
+
+  @@unique([resource, action])
+  @@map("permissions")
+}
+
+/// Many-to-many join table for Role <-> Permission
+model RolePermission {
+  id           String @id @default(cuid())
+  roleId       String @map("role_id")
+  permissionId String @map("permission_id")
+
+  // Relations
+  role       Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@unique([roleId, permissionId])
+  @@map("role_permissions")
+}
+
+/// User role assignment with source tracking (OIDC sync vs manual DB override)
+model UserRole {
+  id     String     @id @default(cuid())
+  userId String     @map("user_id")
+  roleId String     @map("role_id")
+  source RoleSource @default(DATABASE)
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role Role @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  // Timestamps
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@unique([userId, roleId])
+  @@index([userId])
+  @@map("user_roles")
+}
+
+/// Source of role assignment
+enum RoleSource {
+  OIDC     // Synced from Authentik groups
+  DATABASE // Manual override in TailDeck
+}
+
+// ============================================
+// AUDIT LOGGING
+// Comprehensive audit trail for all mutations
+// ============================================
+
+model AuditLog {
+  id           String   @id @default(cuid())
+  timestamp    DateTime @default(now())
+  actorUserId  String?  @map("actor_user_id")
+  actorEmail   String?  @map("actor_email")
+  actorIp      String?  @map("actor_ip")
+  action       String   // CREATE_NODE, DELETE_NODE, UPDATE_ACL, etc.
+  resourceType String   @map("resource_type") // NODE, ROUTE, ACL, USER, KEY, ROLE
+  resourceId   String?  @map("resource_id")
+  metadata     Json?    @db.JsonB
+  oldValue     Json?    @db.JsonB @map("old_value")
+  newValue     Json?    @db.JsonB @map("new_value")
+
+  // Relations
+  user User? @relation(fields: [actorUserId], references: [id], onDelete: SetNull)
+
+  @@index([actorUserId])
+  @@index([action])
+  @@index([resourceType])
+  @@index([timestamp])
+  @@map("audit_logs")
+}
