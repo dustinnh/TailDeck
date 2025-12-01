@@ -64,16 +64,34 @@ TailDeck includes helper scripts to simplify setup and maintenance:
 
 ### `./scripts/setup.sh`
 
-Interactive setup wizard that:
+Interactive setup wizard that automates the entire first-time configuration:
 
-- Runs pre-flight checks (Docker, Node.js, ports)
-- Prompts for configuration (domain, URLs, MagicDNS)
-- Generates secure secrets
-- Creates `.env.local` from your inputs
-- Starts Docker services
-- Generates Headscale configuration
-- Creates Headscale API key
-- Sets up the database
+1. **Pre-flight checks**: Verifies Docker, Node.js, and port availability
+2. **Environment configuration**:
+   - Creates `.env.local` from template
+   - Generates secure `AUTH_SECRET` (32-byte random)
+   - Generates `AUTHENTIK_BOOTSTRAP_TOKEN` for API automation
+3. **Dependency installation**: Runs `npm install`
+4. **Headscale configuration**: Generates `headscale/config.yaml` from template
+5. **Docker services**: Starts all infrastructure (PostgreSQL, Redis, Authentik, Headscale, Loki)
+6. **Headscale API key**: Auto-generates key and updates `.env.local`
+7. **Database setup**: Runs Prisma migrations and seeds roles/permissions
+8. **Authentik OIDC setup** (automatic via bootstrap token):
+   - Creates OAuth2 provider with correct redirect URIs and scopes
+   - Creates TailDeck application linked to the provider
+   - Creates RBAC groups (Admins, Operators, Auditors, Users)
+   - Updates `AUTH_AUTHENTIK_SECRET` in `.env.local`
+
+**Options:**
+
+```bash
+./scripts/setup.sh [options]
+
+  --quick, -q       Quick mode with development defaults (non-interactive)
+  --skip-authentik  Skip automatic Authentik configuration (manual setup)
+  --skip-docker     Skip Docker service management
+  --help, -h        Show help message
+```
 
 ### `./scripts/cleanup.sh`
 
@@ -247,13 +265,32 @@ These are **browser redirect URLs**, so they must be reachable from the user's m
 
 ## Authentik Configuration
 
-### 1. Initial Setup
+### Automatic Setup (Recommended)
+
+When you run `./scripts/setup.sh`, Authentik is configured automatically using the **bootstrap token** mechanism:
+
+1. The setup script generates a random `AUTHENTIK_BOOTSTRAP_TOKEN` in `.env.local`
+2. This token is passed to Authentik via `docker-compose.yml` environment variable
+3. Authentik accepts API requests authenticated with this token
+4. The setup script calls `scripts/setup-authentik.ts` which:
+   - Creates the OAuth2 provider with correct settings
+   - Creates the TailDeck application
+   - Creates RBAC groups for role mapping
+   - Saves the generated client secret to `.env.local`
+
+**No manual Authentik configuration is needed** when using the setup script.
+
+### Manual Setup (Alternative)
+
+If you used `--skip-authentik` or need to configure manually:
+
+#### 1. Initial Setup
 
 1. Open http://localhost:9000/if/flow/initial-setup/
 2. Create your admin account
 3. Complete the setup wizard
 
-### 2. Create OAuth2 Provider
+#### 2. Create OAuth2 Provider
 
 1. Go to **Admin Interface**: http://localhost:9000/admin/
 2. Navigate to **Applications** → **Providers**
@@ -274,7 +311,7 @@ These are **browser redirect URLs**, so they must be reachable from the user's m
    - Scopes: `openid`, `profile`, `email`
 6. Click **Create**
 
-### 3. Create Application
+#### 3. Create Application
 
 1. Navigate to **Applications** → **Applications**
 2. Click **Create**
@@ -288,13 +325,13 @@ These are **browser redirect URLs**, so they must be reachable from the user's m
 
 4. Click **Create**
 
-### 4. Update Environment
+#### 4. Update Environment
 
 ```env
 AUTH_AUTHENTIK_SECRET="<paste the client secret>"
 ```
 
-### 5. (Optional) RBAC Groups
+#### 5. (Optional) RBAC Groups
 
 Create groups in Authentik for role mapping:
 

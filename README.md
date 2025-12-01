@@ -82,6 +82,28 @@ Options:
   --help, -h        Show help message
 ```
 
+### What the Setup Script Does
+
+The setup script automates the entire first-time configuration:
+
+1. **Pre-flight Checks**: Verifies Docker, Node.js, and port availability
+2. **Environment Configuration**:
+   - Creates `.env.local` from template
+   - Generates secure `AUTH_SECRET` (32-byte random)
+   - Generates `AUTHENTIK_BOOTSTRAP_TOKEN` for API automation
+3. **Dependency Installation**: Runs `npm install`
+4. **Headscale Configuration**: Generates `headscale/config.yaml` from template
+5. **Docker Services**: Starts PostgreSQL, Redis, Authentik, Headscale, and Loki
+6. **Headscale API Key**: Auto-generates API key and updates `.env.local`
+7. **Database Setup**: Runs Prisma migrations and seeds roles/permissions
+8. **Authentik OIDC Setup** (automatic):
+   - Creates OAuth2 provider with correct redirect URIs
+   - Creates TailDeck application linked to provider
+   - Creates RBAC groups (Admins, Operators, Auditors, Users)
+   - Updates `AUTH_AUTHENTIK_SECRET` in `.env.local`
+
+After setup completes, just run `npm run dev` and sign in - the first user becomes OWNER.
+
 ---
 
 ## Documentation
