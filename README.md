@@ -64,10 +64,23 @@ The setup script handles everything: Docker services, environment config, Authen
 
 TailDeck includes helper scripts for common operations:
 
-| Script                 | Description                                     |
-| ---------------------- | ----------------------------------------------- |
-| `./scripts/setup.sh`   | Interactive setup wizard with pre-flight checks |
-| `./scripts/cleanup.sh` | Reset to fresh install (removes all data)       |
+| Script                       | Description                                     |
+| ---------------------------- | ----------------------------------------------- |
+| `./scripts/setup.sh`         | Interactive setup wizard with pre-flight checks |
+| `./scripts/setup.sh --quick` | Quick mode with development defaults            |
+| `./scripts/cleanup.sh`       | Reset to fresh install (removes all data)       |
+
+### Setup Script Options
+
+```bash
+./scripts/setup.sh [options]
+
+Options:
+  --quick, -q       Quick mode with defaults (development)
+  --skip-authentik  Skip automatic Authentik OIDC configuration
+  --skip-docker     Skip Docker service management
+  --help, -h        Show help message
+```
 
 ---
 
