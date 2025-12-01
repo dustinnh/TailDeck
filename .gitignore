@@ -81,6 +81,9 @@ Thumbs.db
 headscale/*.db
 headscale/*.db-*
 
+# Generated Headscale config (contains deployment-specific settings)
+headscale/config.yaml
+
 # Temporary files
 tmp/
 temp/
