@@ -4,81 +4,145 @@
 
 A modern web dashboard for managing [Headscale](https://headscale.net/) - the self-hosted implementation of Tailscale's control server.
 
+---
+
+## TL;DR - Quick Install
+
+```bash
+git clone https://github.com/yourusername/taildeck.git
+cd taildeck
+./scripts/setup.sh    # Interactive setup wizard
+npm run dev           # Start development server
+```
+
+The setup script handles everything: Docker services, environment config, Authentik OIDC, Headscale API keys, and database setup. Open http://localhost:3000 after setup - the first user to sign in becomes OWNER.
+
+**[Full Installation Walkthrough](./INSTALL_WALKTHROUGH.md)** | **[Detailed Setup Guide](./SETUP.md)**
+
+---
+
 ## Features
+
+### Core Management
 
 - **Device Management**: View, rename, tag, expire, and delete nodes
 - **Bulk Operations**: Select multiple machines for batch operations
-- **Route Management**: Enable/disable advertised routes
+- **Route Management**: Enable/disable advertised routes and exit nodes
 - **DNS Configuration**: Manage nameservers, search domains, and MagicDNS
-- **API Keys**: Create and manage Headscale API keys
+- **API Keys**: Create and manage Headscale API keys with expiration
 - **ACL Policies**: Edit access control policies with JSON editor
+
+### Observability
+
+- **Flow Log Explorer**: Query and analyze network flow logs (Loki integration)
+- **Health Dashboard**: Real-time service health monitoring
 - **Audit Logging**: Track all changes with comprehensive audit trail
+
+### Security & Access
+
 - **Role-Based Access**: OWNER > ADMIN > OPERATOR > AUDITOR > USER hierarchy
 - **OIDC Authentication**: Integrate with Authentik, Keycloak, or any OIDC provider
+- **Security Warnings**: Pre-flight checks for misconfigurations
+- **Setup Wizard**: Web-based configuration with health diagnostics
 
-## Quick Start
-
-```bash
-# Clone the repository
-git clone https://github.com/yourusername/taildeck.git
-cd taildeck
-
-# Run automated setup
-./scripts/setup.sh
-
-# Follow the Authentik configuration instructions
-# Then start the development server
-npm run dev
-```
-
-Open http://localhost:3000 - the first user to sign in becomes OWNER.
+---
 
 ## Requirements
 
-- Docker & Docker Compose
-- Node.js 18+
-- 4GB RAM minimum
+| Requirement    | Minimum | Recommended |
+| -------------- | ------- | ----------- |
+| Docker         | 20.10+  | Latest      |
+| Docker Compose | 2.0+    | Latest      |
+| Node.js        | 18.0+   | 20.x LTS    |
+| RAM            | 4GB     | 8GB         |
+| Disk           | 10GB    | 20GB        |
+
+---
+
+## Scripts
+
+TailDeck includes helper scripts for common operations:
+
+| Script                 | Description                                     |
+| ---------------------- | ----------------------------------------------- |
+| `./scripts/setup.sh`   | Interactive setup wizard with pre-flight checks |
+| `./scripts/cleanup.sh` | Reset to fresh install (removes all data)       |
+
+---
 
 ## Documentation
 
-- **[SETUP.md](./SETUP.md)** - Complete setup guide with troubleshooting
-- **[CLAUDE.md](./CLAUDE.md)** - Developer documentation and architecture
+| Document                                               | Description                              |
+| ------------------------------------------------------ | ---------------------------------------- |
+| **[INSTALL_WALKTHROUGH.md](./INSTALL_WALKTHROUGH.md)** | Step-by-step installation guide          |
+| **[SETUP.md](./SETUP.md)**                             | Detailed configuration reference         |
+| **[CONTRIBUTING.md](./CONTRIBUTING.md)**               | Developer documentation and architecture |
+
+---
 
 ## Architecture
 
 ```
-TailDeck ──────▶ Headscale (VPN coordination)
-    │
-    ├──────────▶ PostgreSQL (app data, audit logs)
-    │
-    └──────────▶ Authentik (OIDC authentication)
+                          ┌─────────────────────────────────────┐
+                          │           TailDeck                  │
+                          │  ┌───────────┐  ┌────────────────┐  │
+   Browser ──────────────▶│  │  Next.js  │  │  Setup Wizard  │  │
+                          │  │  Frontend │  │  (Web UI)      │  │
+                          │  └─────┬─────┘  └────────────────┘  │
+                          │        │                            │
+                          │  ┌─────▼─────────────────────────┐  │
+                          │  │    Next.js API Routes         │  │
+                          │  │    (BFF - Backend for Frontend)│  │
+                          │  └───┬─────────┬─────────┬───────┘  │
+                          └─────│─────────│─────────│───────────┘
+                                │         │         │
+              ┌─────────────────▼─┐ ┌─────▼─────┐ ┌─▼─────────────┐
+              │    Headscale      │ │ PostgreSQL│ │   Authentik   │
+              │  (VPN Control)    │ │ (App Data)│ │   (OIDC)      │
+              └───────────────────┘ └───────────┘ └───────────────┘
 ```
+
+### Key Design Decisions
+
+- **BFF Pattern**: Browser never directly contacts Headscale - all API calls proxied through secure backend
+- **JWT Sessions**: Reduced database load compared to database sessions
+- **Optimistic Updates**: TanStack Query with automatic rollback on errors
+- **Server-Only Secrets**: Headscale API keys and sensitive config never exposed to client
+
+---
 
 ## Tech Stack
 
-- **Frontend**: Next.js 14, React 18, TanStack Query, Tailwind CSS, shadcn/ui
-- **Backend**: Next.js API Routes, Prisma ORM, Auth.js v5
-- **Infrastructure**: PostgreSQL, Headscale, Authentik, Docker
+| Layer          | Technology                                         |
+| -------------- | -------------------------------------------------- |
+| Frontend       | Next.js 14, React 18, TanStack Query, Tailwind CSS |
+| UI Components  | shadcn/ui, Lucide Icons                            |
+| Backend        | Next.js API Routes, Prisma ORM                     |
+| Authentication | Auth.js v5 with Authentik OIDC                     |
+| Database       | PostgreSQL                                         |
+| Infrastructure | Docker, Headscale, Authentik, Redis                |
+
+---
 
 ## Development
 
-```bash
-# Start infrastructure
-docker compose up -d
+### Quick Start (Development)
 
+```bash
 # Install dependencies
 npm install
 
-# Set up database
-npm run db:generate
-npm run db:push
-npm run db:seed
+# Start infrastructure only (recommended for development)
+docker compose up -d
 
-# Start development server
+# Set up database
+npm run db:generate && npm run db:push && npm run db:seed
+
+# Start dev server with hot reload
 npm run dev
 ```
 
-### Available Scripts
+### Available Commands
 
 | Command               | Description                |
 | --------------------- | -------------------------- |
@@ -86,54 +150,86 @@ npm run dev
 | `npm run build`       | Build for production       |
 | `npm run start`       | Start production server    |
 | `npm run lint`        | Run ESLint                 |
+| `npm run lint:fix`    | Auto-fix ESLint issues     |
 | `npm run typecheck`   | Run TypeScript checks      |
 | `npm run db:generate` | Generate Prisma client     |
 | `npm run db:push`     | Push schema to database    |
+| `npm run db:migrate`  | Create database migrations |
 | `npm run db:seed`     | Seed roles and permissions |
 
-## Docker
+---
 
-### Development (recommended)
+## Production Deployment
 
-```bash
-# Start infrastructure only
-docker compose up -d
-
-# Run Next.js locally for hot reload
-npm run dev
-```
-
-### Production
+### Option A: Full Docker Stack
 
 ```bash
 # Build and run everything in Docker
 docker compose --profile app up -d --build
 ```
 
+### Option B: Separate App Server
+
+```bash
+# On infrastructure server
+docker compose up -d
+
+# On app server
+npm ci
+npm run build
+npm start
+```
+
+See **[SETUP.md](./SETUP.md)** for production environment variables and TLS configuration.
+
+---
+
 ## Role Hierarchy
 
-| Role     | Permissions                              |
-| -------- | ---------------------------------------- |
-| OWNER    | Full access, manage API keys             |
-| ADMIN    | Settings, policies, DNS, user management |
-| OPERATOR | Machine management, routes, tags         |
-| AUDITOR  | Read-only access to audit logs           |
-| USER     | View own devices only                    |
+| Role     | Permissions                                      |
+| -------- | ------------------------------------------------ |
+| OWNER    | Full access, API key management, system settings |
+| ADMIN    | Settings, policies, DNS, user management         |
+| OPERATOR | Machine management, routes, tags                 |
+| AUDITOR  | Read-only access to audit logs                   |
+| USER     | View own devices only (user portal)              |
+
+---
+
+## Web Setup Wizard
+
+After initial deployment, access the setup wizard at `/setup` to:
+
+1. **Verify Services**: Check Database, Headscale, and OIDC connectivity
+2. **Configure Domain**: Set public URLs and domain settings
+3. **Enable MagicDNS**: Configure DNS settings with sensible defaults
+4. **Security Review**: Address any security warnings before going live
+5. **Complete Setup**: Mark installation as complete
+
+The wizard includes real-time health diagnostics and security warnings for common misconfigurations.
+
+---
 
 ## Contributing
 
 1. Fork the repository
-2. Create a feature branch
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
 3. Make your changes
-4. Run `npm run lint && npm run typecheck`
-5. Submit a pull request
+4. Run checks: `npm run lint && npm run typecheck`
+5. Commit with descriptive message
+6. Submit a pull request
+
+---
 
 ## License
 
 MIT
+
+---
 
 ## Acknowledgments
 
 - [Headscale](https://github.com/juanfont/headscale) - Self-hosted Tailscale control server
 - [Authentik](https://goauthentik.io/) - Identity provider
 - [shadcn/ui](https://ui.shadcn.com/) - UI components
+- [TanStack Query](https://tanstack.com/query) - Data fetching
