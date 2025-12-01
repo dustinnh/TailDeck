@@ -9,6 +9,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Network Topology Visualization**: Interactive graph showing network relationships
+  - Headscale server as central hub node
+  - Visual distinction between online/offline nodes
+  - Subnet routes displayed with connections to advertising nodes
+  - Exit node indicators
+  - Zoom, pan, and node drag interactions
+- **Production Docker Deployment**: Full containerized deployment support
+  - Multi-stage Dockerfile optimized for production
+  - Docker Compose profile (`--profile app`) for full stack deployment
+  - Configurable CSP headers for production URLs
 - Toast notifications for all mutation operations (using sonner)
 - Loading spinners on action buttons during pending state
 - Tag filter dropdown on Machines page
@@ -18,13 +28,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **Headscale 0.27 Compatibility**: Updated API integration for latest Headscale version
+  - Node status now uses `status` field instead of deprecated `online` field
+  - Graceful fallback for API differences between versions
 - DNS page now shows helpful configuration guide when API not available
 - Improved error messages with actual error details from Headscale API
+- Environment configuration now clearly documents which URLs must be externally accessible
 
 ### Fixed
 
 - API keys page error when `lastSeen` is null (schema validation)
 - DNS page error handling for unsupported Headscale versions
+- Node online status detection for Headscale 0.27+
+- CSP form-action now dynamically uses AUTH_AUTHENTIK_ISSUER for production deployments
 
 ## [0.1.0] - 2024-11-30
 

@@ -263,9 +263,28 @@ export class LokiProvider implements FlowLogProvider {
 
   async healthCheck(): Promise<boolean> {
     try {
-      await this.request('/ready');
-      return true;
-    } catch {
+      // Loki's /ready endpoint returns plain text "ready", not JSON
+      // So we can't use the generic request() method here
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), this.timeout);
+
+      const response = await fetch(`${this.baseUrl}/ready`, {
+        method: 'GET',
+        headers: this.headers,
+        signal: controller.signal,
+      });
+
+      clearTimeout(timeoutId);
+
+      if (!response.ok) {
+        logger.warn({ statusCode: response.status }, 'Loki health check failed');
+        return false;
+      }
+
+      const text = await response.text();
+      return text.trim() === 'ready';
+    } catch (error) {
+      logger.error({ error }, 'Loki health check error');
       return false;
     }
   }

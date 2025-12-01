@@ -78,7 +78,8 @@ export const GET = withMinimumRole('AUDITOR', async (req: NextRequest, ctx) => {
       return NextResponse.json(
         {
           error: 'Invalid request',
-          details: validated.error.flatten().fieldErrors,
+          rawParams,
+          details: validated.error.flatten(),
         },
         {
           status: 400,

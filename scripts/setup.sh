@@ -104,7 +104,7 @@ fi
 # Step 1: Pre-flight Checks
 ###########################################
 
-step_init 7
+step_init 8
 step_next "Pre-flight Checks"
 
 if ! preflight_checks; then
@@ -154,16 +154,29 @@ if [ ! -f ".env.local" ]; then
     log_success "Set AUTH_URL to ${AUTH_URL}"
 fi
 
-# Generate Authentik bootstrap token if not already set
-if ! grep -q "AUTHENTIK_BOOTSTRAP_TOKEN=" .env.local || grep -q "AUTHENTIK_BOOTSTRAP_TOKEN=$" .env.local; then
+# Generate Authentik bootstrap token if empty or not set
+# Extract current value (handles both AUTHENTIK_BOOTSTRAP_TOKEN="" and AUTHENTIK_BOOTSTRAP_TOKEN="value")
+CURRENT_TOKEN=$(grep "^AUTHENTIK_BOOTSTRAP_TOKEN=" .env.local 2>/dev/null | sed 's/^AUTHENTIK_BOOTSTRAP_TOKEN="//' | sed 's/"$//')
+
+if [ -z "$CURRENT_TOKEN" ]; then
     AUTHENTIK_BOOTSTRAP_TOKEN=$(openssl rand -hex 32)
-    echo "" >> .env.local
-    echo "# Authentik Bootstrap Token (for automated configuration)" >> .env.local
-    echo "AUTHENTIK_BOOTSTRAP_TOKEN=\"${AUTHENTIK_BOOTSTRAP_TOKEN}\"" >> .env.local
+
+    # Update in place if the line exists, otherwise append
+    if grep -q "^AUTHENTIK_BOOTSTRAP_TOKEN=" .env.local; then
+        if [[ "$OSTYPE" == "darwin"* ]]; then
+            sed -i '' "s|^AUTHENTIK_BOOTSTRAP_TOKEN=.*|AUTHENTIK_BOOTSTRAP_TOKEN=\"${AUTHENTIK_BOOTSTRAP_TOKEN}\"|" .env.local
+        else
+            sed -i "s|^AUTHENTIK_BOOTSTRAP_TOKEN=.*|AUTHENTIK_BOOTSTRAP_TOKEN=\"${AUTHENTIK_BOOTSTRAP_TOKEN}\"|" .env.local
+        fi
+    else
+        echo "" >> .env.local
+        echo "AUTHENTIK_BOOTSTRAP_TOKEN=\"${AUTHENTIK_BOOTSTRAP_TOKEN}\"" >> .env.local
+    fi
     log_success "Generated AUTHENTIK_BOOTSTRAP_TOKEN"
     export AUTHENTIK_BOOTSTRAP_TOKEN
 else
-    AUTHENTIK_BOOTSTRAP_TOKEN=$(grep "AUTHENTIK_BOOTSTRAP_TOKEN=" .env.local | cut -d'"' -f2)
+    AUTHENTIK_BOOTSTRAP_TOKEN="$CURRENT_TOKEN"
+    log_info "Using existing AUTHENTIK_BOOTSTRAP_TOKEN"
     export AUTHENTIK_BOOTSTRAP_TOKEN
 fi
 
@@ -189,7 +202,23 @@ else
 fi
 
 ###########################################
-# Step 4: Start Docker Services
+# Step 4: Generate Headscale Config
+###########################################
+
+step_next "Headscale Configuration"
+
+# Generate Headscale config from template BEFORE starting Docker
+# This is critical because Docker will fail if the config file doesn't exist
+if [ -f "headscale/config.yaml.template" ]; then
+    export HEADSCALE_PUBLIC_URL="${HEADSCALE_URL:-http://localhost:8080}"
+    export LOG_LEVEL="info"
+    generate_headscale_config "headscale/config.yaml.template" "headscale/config.yaml"
+else
+    log_warn "Headscale config template not found"
+fi
+
+###########################################
+# Step 5: Start Docker Services
 ###########################################
 
 step_next "Starting Docker Services"
@@ -206,21 +235,14 @@ else
 fi
 
 ###########################################
-# Step 5: Generate Headscale API Key
+# Step 6: Generate Headscale API Key
 ###########################################
 
-step_next "Headscale Configuration"
+step_next "Generating Headscale API Key"
 
 if [ "$SKIP_DOCKER" = true ]; then
-    log_info "Skipping Headscale setup (Docker skipped)"
+    log_info "Skipping Headscale API key (Docker skipped)"
 else
-    # Generate Headscale config from template if it doesn't exist or if we have new settings
-    if [ -f "headscale/config.yaml.template" ]; then
-        export HEADSCALE_PUBLIC_URL="${HEADSCALE_URL}"
-        export LOG_LEVEL="info"
-        generate_headscale_config "headscale/config.yaml.template" "headscale/config.yaml"
-    fi
-
     # Check if HEADSCALE_API_KEY is already set (not placeholder)
     if grep -q "your-headscale-api-key" .env.local; then
         log_info "Generating Headscale API key..."
@@ -239,11 +261,22 @@ else
         log_info "Headscale API key already configured"
     fi
 
+    # Create default Headscale user from admin email prefix
+    if [ -n "$ADMIN_EMAIL" ]; then
+        HEADSCALE_USERNAME="${ADMIN_EMAIL%%@*}"
+    else
+        # Fallback for quick mode
+        HEADSCALE_USERNAME="admin"
+    fi
+
+    log_info "Creating default Headscale user: ${HEADSCALE_USERNAME}"
+    create_headscale_user "headscale" "$HEADSCALE_USERNAME"
+
     show_headscale_info "headscale"
 fi
 
 ###########################################
-# Step 6: Database Setup
+# Step 7: Database Setup
 ###########################################
 
 step_next "Database Setup"
@@ -260,7 +293,7 @@ npm run db:seed
 log_success "Database setup complete"
 
 ###########################################
-# Step 7: Authentik Configuration
+# Step 8: Authentik Configuration
 ###########################################
 
 step_next "Authentik OIDC Configuration"

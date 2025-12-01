@@ -3,7 +3,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { useSession } from 'next-auth/react';
 import { QRCodeSVG } from 'qrcode.react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
@@ -115,6 +115,22 @@ export function AddDeviceClient() {
     enabled: canCreate,
   });
 
+  const users = usersData?.users ?? [];
+
+  // Auto-select Headscale user based on auth user's email prefix
+  const userEmail = session?.user?.email;
+  useEffect(() => {
+    if (userEmail && users.length > 0 && !selectedUser) {
+      const emailPrefix = userEmail.split('@')[0]?.toLowerCase();
+      if (emailPrefix) {
+        const matchingUser = users.find((u) => u.name.toLowerCase() === emailPrefix);
+        if (matchingUser) {
+          setSelectedUser(matchingUser.name);
+        }
+      }
+    }
+  }, [userEmail, users, selectedUser]);
+
   if (!canCreate) {
     return (
       <Alert>
@@ -145,8 +161,6 @@ export function AddDeviceClient() {
       </Card>
     );
   }
-
-  const users = usersData?.users ?? [];
 
   const handleCreate = async () => {
     if (!selectedUser) return;

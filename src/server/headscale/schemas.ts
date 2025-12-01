@@ -52,6 +52,7 @@ export const registerMethodSchema = z.enum([
 /**
  * Headscale Node schema
  * Headscale v0.23+ returns camelCase fields
+ * Headscale v0.27+ includes route fields in the node object
  */
 const headscaleNodeRawSchema = z.object({
   id: z.string(),
@@ -68,6 +69,10 @@ const headscaleNodeRawSchema = z.object({
   online: z.boolean(),
   registerMethod: registerMethodSchema,
   createdAt: timestampSchema.optional(),
+  // Route fields added in Headscale 0.27+
+  availableRoutes: z.array(z.string()).optional(),
+  approvedRoutes: z.array(z.string()).optional(),
+  subnetRoutes: z.array(z.string()).optional(),
 });
 
 export const headscaleNodeSchema = headscaleNodeRawSchema.transform((data) => ({
@@ -91,6 +96,9 @@ export const headscaleNodeSchema = headscaleNodeRawSchema.transform((data) => ({
   online: data.online,
   registerMethod: data.registerMethod,
   createdAt: data.createdAt,
+  availableRoutes: data.availableRoutes,
+  approvedRoutes: data.approvedRoutes,
+  subnetRoutes: data.subnetRoutes,
 }));
 
 /**
@@ -122,6 +130,9 @@ export const listNodesResponseSchema = z
       online: node.online,
       registerMethod: node.registerMethod,
       createdAt: node.createdAt,
+      availableRoutes: node.availableRoutes,
+      approvedRoutes: node.approvedRoutes,
+      subnetRoutes: node.subnetRoutes,
     })),
   }));
 
@@ -154,6 +165,9 @@ export const getNodeResponseSchema = z
       online: data.node.online,
       registerMethod: data.node.registerMethod,
       createdAt: data.node.createdAt,
+      availableRoutes: data.node.availableRoutes,
+      approvedRoutes: data.node.approvedRoutes,
+      subnetRoutes: data.node.subnetRoutes,
     },
   }));
 

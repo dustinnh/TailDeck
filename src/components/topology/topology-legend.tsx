@@ -51,6 +51,7 @@ export function TopologyLegend() {
             <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
               Nodes
             </p>
+            <LegendNodeItem color="blue" label="Headscale Server" gradient />
             <LegendNodeItem color="emerald" label="Online" />
             <LegendNodeItem color="gray" label="Offline" dashed />
             <LegendNodeItem color="amber" label="Expiring Soon" pulse />
@@ -82,7 +83,7 @@ function LegendNodeItem({
   pulse,
   gradient,
 }: {
-  color: 'emerald' | 'gray' | 'amber' | 'violet';
+  color: 'emerald' | 'gray' | 'amber' | 'violet' | 'blue';
   label: string;
   dashed?: boolean;
   pulse?: boolean;
@@ -93,6 +94,7 @@ function LegendNodeItem({
     gray: 'border-gray-400',
     amber: 'border-amber-500 bg-amber-500/10',
     violet: 'border-violet-500',
+    blue: 'border-blue-500',
   };
 
   return (
@@ -103,7 +105,8 @@ function LegendNodeItem({
           colorClasses[color],
           dashed && 'border-dashed bg-transparent',
           pulse && 'animate-pulse',
-          gradient && 'bg-gradient-to-r from-violet-500/20 to-fuchsia-500/20'
+          gradient && color === 'violet' && 'bg-gradient-to-r from-violet-500/20 to-fuchsia-500/20',
+          gradient && color === 'blue' && 'bg-gradient-to-r from-blue-500/20 to-cyan-500/20'
         )}
       />
       <span className="text-foreground">{label}</span>

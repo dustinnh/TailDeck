@@ -132,6 +132,16 @@ function handleHeadscaleError(error: unknown, childLogger: typeof logger, reques
       );
     }
 
+    if (error.statusCode === 501 || error.code === 'NOT_IMPLEMENTED') {
+      return NextResponse.json(
+        {
+          error: 'DNS configuration is managed via Headscale config file in version 0.27+',
+          message: 'Edit headscale/config.yaml to change DNS settings',
+        },
+        { status: 501, headers: { 'X-Request-ID': requestId } }
+      );
+    }
+
     if (error.statusCode === 404 || error.message?.includes('Not Found')) {
       return NextResponse.json(
         { error: 'Not Found - DNS API not available in this Headscale version' },

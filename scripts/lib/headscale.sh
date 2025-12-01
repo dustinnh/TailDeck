@@ -4,8 +4,8 @@
 #
 
 # Source colors if not already loaded
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-source "${SCRIPT_DIR}/colors.sh" 2>/dev/null || true
+LIB_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "${LIB_DIR}/colors.sh" 2>/dev/null || true
 
 # Generate Headscale config from template
 generate_headscale_config() {
@@ -42,11 +42,14 @@ generate_headscale_config() {
 }
 
 # Generate or retrieve Headscale API key
+# Note: This function outputs ONLY the API key to stdout.
+# All log messages go to stderr to avoid capturing them in $()
 generate_headscale_api_key() {
     local container="${1:-headscale}"
     local expiration="${2:-365d}"
 
-    log_info "Generating Headscale API key..."
+    # Log to stderr to avoid capturing in command substitution
+    echo -e "${BLUE}[INFO]${NC} Generating Headscale API key..." >&2
 
     # Wait for Headscale to be ready
     local attempts=0
@@ -59,7 +62,7 @@ generate_headscale_api_key() {
     done
 
     if [ $attempts -ge 30 ]; then
-        log_error "Headscale container not ready"
+        echo -e "${RED}[ERROR]${NC} Headscale container not ready" >&2
         return 1
     fi
 
@@ -67,11 +70,15 @@ generate_headscale_api_key() {
     local api_key
     api_key=$(docker exec "$container" headscale apikeys create --expiration "$expiration" 2>/dev/null)
 
+    # Strip any whitespace/newlines
+    api_key=$(echo "$api_key" | tr -d '[:space:]')
+
     if [ -n "$api_key" ]; then
+        # Only output the clean API key to stdout
         echo "$api_key"
         return 0
     else
-        log_error "Failed to generate Headscale API key"
+        echo -e "${RED}[ERROR]${NC} Failed to generate Headscale API key" >&2
         return 1
     fi
 }
@@ -155,6 +162,9 @@ update_env_headscale_key() {
         log_error "Environment file not found: ${env_file}"
         return 1
     fi
+
+    # Strip any whitespace/newlines from the API key
+    api_key=$(echo "$api_key" | tr -d '[:space:]')
 
     # Check if placeholder exists
     if grep -q "your-headscale-api-key" "$env_file"; then

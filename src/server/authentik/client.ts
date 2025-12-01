@@ -110,9 +110,11 @@ class AuthentikClient {
       if (!response.ok) {
         let errorMessage = `Authentik API error: ${response.status}`;
         let errorCode: string | undefined;
+        let fullErrorBody: Record<string, unknown> | null = null;
 
         try {
-          const errorBody = (await response.json()) as {
+          fullErrorBody = (await response.json()) as Record<string, unknown>;
+          const errorBody = fullErrorBody as {
             detail?: string;
             code?: string;
             non_field_errors?: string[];
@@ -124,11 +126,16 @@ class AuthentikClient {
         }
 
         logger.error(
-          { statusCode: response.status, endpoint, errorCode },
+          { statusCode: response.status, endpoint, errorCode, errorBody: fullErrorBody },
           `Authentik API error: ${errorMessage}`
         );
 
         throw new AuthentikClientError(errorMessage, response.status, errorCode);
+      }
+
+      // Handle 204 No Content (common for DELETE operations)
+      if (response.status === 204) {
+        return undefined as T;
       }
 
       // Parse response
@@ -167,8 +174,16 @@ class AuthentikClient {
       }
 
       // Handle other errors
-      logger.error({ endpoint, error }, 'Authentik API request failed');
-      throw new AuthentikClientError('Failed to connect to Authentik', 503, 'CONNECTION_ERROR');
+      const errorMsg = error instanceof Error ? error.message : String(error);
+      logger.error(
+        { endpoint, error: errorMsg, errorType: error?.constructor?.name },
+        'Authentik API request failed'
+      );
+      throw new AuthentikClientError(
+        `Failed to connect to Authentik: ${errorMsg}`,
+        503,
+        'CONNECTION_ERROR'
+      );
     }
   }
 
@@ -290,6 +305,23 @@ class AuthentikClient {
     );
   }
 
+  /**
+   * Update OAuth2 provider
+   */
+  async updateOAuth2Provider(
+    pk: number,
+    params: Partial<OAuth2ProviderCreateRequest>
+  ): Promise<OAuth2Provider> {
+    return this.request<OAuth2Provider>(
+      `/providers/oauth2/${pk}/`,
+      {
+        method: 'PATCH',
+        body: JSON.stringify(params),
+      },
+      oauth2ProviderCreateResponseSchema
+    );
+  }
+
   // ============================================
   // Application Operations
   // ============================================
@@ -386,33 +418,38 @@ class AuthentikClient {
         throw new Error('No scope mappings found');
       }
 
-      // 3. Check/create OAuth2 provider
+      // 3. Check for existing provider and create/update as needed
+      // Always generate a new secret so we can save it to .env.local
+      const clientSecret = this.generateClientSecret();
       let provider = await this.getOAuth2ProviderByName('TailDeck OAuth2');
-      let clientSecret: string | undefined;
 
-      if (!provider) {
+      if (provider) {
+        // Update existing provider with new secret
+        logger.info('Updating existing OAuth2 provider with new secret...');
+        provider = await this.updateOAuth2Provider(provider.pk, {
+          client_secret: clientSecret,
+          redirect_uris: redirectUri,
+          property_mappings: scopeMappings,
+        });
+      } else {
+        // Create new provider
         logger.info('Creating OAuth2 provider...');
-        clientSecret = this.generateClientSecret();
-
         provider = await this.createOAuth2Provider({
           name: 'TailDeck OAuth2',
           authorization_flow: flow.pk,
           client_type: 'confidential',
           client_id: clientId,
           client_secret: clientSecret,
-          redirect_uris: [{ matching_mode: 'strict', url: redirectUri }],
+          redirect_uris: redirectUri,
           access_token_validity: 'minutes=10',
           refresh_token_validity: 'days=30',
           include_claims_in_id_token: true,
           property_mappings: scopeMappings,
         });
-      } else {
-        logger.info('OAuth2 provider already exists');
       }
 
       // 4. Check/create application
       let app = await this.getApplicationBySlug('taildeck');
-
       if (!app) {
         logger.info('Creating application...');
         app = await this.createApplication({

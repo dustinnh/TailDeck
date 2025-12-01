@@ -4,8 +4,8 @@
 #
 
 # Source colors if not already loaded
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-source "${SCRIPT_DIR}/colors.sh" 2>/dev/null || true
+LIB_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "${LIB_DIR}/colors.sh" 2>/dev/null || true
 
 # Prompt for a text input with optional default and validation
 # Usage: prompt_input "Enter domain:" "example.com" DOMAIN_VAR "validate_domain"

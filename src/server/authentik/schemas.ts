@@ -84,7 +84,7 @@ export const oauth2ProviderSchema = z.object({
   client_type: z.enum(['confidential', 'public']),
   client_id: z.string(),
   client_secret: z.string().optional(),
-  redirect_uris: z.array(redirectUriSchema),
+  redirect_uris: z.string(), // String format in Authentik 2024.2.2
   access_token_validity: z.string(),
   refresh_token_validity: z.string(),
   include_claims_in_id_token: z.boolean(),
@@ -112,7 +112,7 @@ export const applicationSchema = z.object({
   name: z.string(),
   slug: z.string(),
   provider: z.number().nullable().optional(),
-  provider_obj: oauth2ProviderSchema.nullable().optional(),
+  provider_obj: z.any().nullable().optional(), // Generic object - provider types vary
   launch_url: z.string().nullable().optional(),
   open_in_new_tab: z.boolean(),
   meta_launch_url: z.string().optional(),

@@ -27,17 +27,42 @@ const ipRegex =
  */
 export const flowQueryRequestSchema = z.object({
   query: z.string().min(1).max(10000),
-  start: z.string().datetime().or(z.coerce.date()).optional().nullable(),
-  end: z.string().datetime().or(z.coerce.date()).optional().nullable(),
-  limit: z.coerce.number().int().min(1).max(5000).optional().default(100),
-  direction: z.enum(['forward', 'backward']).optional().default('backward'),
-  sourceIp: z.string().regex(ipRegex, 'Invalid IP address').optional(),
-  destinationIp: z.string().regex(ipRegex, 'Invalid IP address').optional(),
-  sourceNode: z.string().max(255).optional(),
-  destinationNode: z.string().max(255).optional(),
-  port: z.coerce.number().int().min(1).max(65535).optional(),
-  protocol: z.enum(['tcp', 'udp', 'icmp', 'all']).optional(),
-  action: z.enum(['accept', 'drop']).optional(),
+  // Accept any valid date string including ISO 8601 with milliseconds
+  start: z
+    .string()
+    .optional()
+    .nullable()
+    .transform((val) => val || null),
+  end: z
+    .string()
+    .optional()
+    .nullable()
+    .transform((val) => val || null),
+  // Handle null from searchParams.get() by coercing and providing default
+  limit: z.preprocess(
+    (val) => (val === null || val === '' || val === undefined ? undefined : val),
+    z.coerce.number().int().min(1).max(5000).optional().default(100)
+  ),
+  direction: z.preprocess(
+    (val) => (val === null || val === '' || val === undefined ? 'backward' : val),
+    z.enum(['forward', 'backward'])
+  ),
+  sourceIp: z.string().regex(ipRegex, 'Invalid IP address').optional().nullable(),
+  destinationIp: z.string().regex(ipRegex, 'Invalid IP address').optional().nullable(),
+  sourceNode: z.string().max(255).optional().nullable(),
+  destinationNode: z.string().max(255).optional().nullable(),
+  port: z.preprocess(
+    (val) => (val === null || val === '' || val === undefined ? undefined : val),
+    z.coerce.number().int().min(1).max(65535).optional()
+  ),
+  protocol: z.preprocess(
+    (val) => (val === null || val === '' ? undefined : val),
+    z.enum(['tcp', 'udp', 'icmp', 'all']).optional()
+  ),
+  action: z.preprocess(
+    (val) => (val === null || val === '' ? undefined : val),
+    z.enum(['accept', 'drop']).optional()
+  ),
 });
 
 export type FlowQueryRequest = z.infer<typeof flowQueryRequestSchema>;

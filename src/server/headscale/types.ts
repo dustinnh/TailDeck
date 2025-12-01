@@ -26,6 +26,7 @@ export interface HeadscaleUser {
 
 /**
  * Headscale Node (machine)
+ * Updated for Headscale 0.27+ which includes routes in the node object
  */
 export interface HeadscaleNode {
   id: string;
@@ -42,6 +43,10 @@ export interface HeadscaleNode {
   online: boolean;
   registerMethod: RegisterMethod;
   createdAt?: Timestamp;
+  // Route fields added in Headscale 0.27+
+  availableRoutes?: string[];
+  approvedRoutes?: string[];
+  subnetRoutes?: string[];
 }
 
 /**

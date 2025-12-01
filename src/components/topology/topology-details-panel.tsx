@@ -20,10 +20,19 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
+import type { HeadscaleNodeData } from './nodes/headscale-node';
 import type { MachineNodeData } from './nodes/machine-node';
 
+// Union type for nodes that can be shown in details panel
+type TopologyNodeData = MachineNodeData | HeadscaleNodeData;
+
+// Type guard to check if node is a machine node
+function isMachineNode(node: TopologyNodeData): node is MachineNodeData {
+  return 'ipAddresses' in node;
+}
+
 interface TopologyDetailsPanelProps {
-  node: MachineNodeData | null;
+  node: TopologyNodeData | null;
   onClose: () => void;
   isOpen: boolean;
 }
@@ -33,6 +42,13 @@ interface TopologyDetailsPanelProps {
  */
 export function TopologyDetailsPanel({ node, onClose, isOpen }: TopologyDetailsPanelProps) {
   if (!node) return null;
+
+  // For Headscale server node, show simplified panel
+  if (!isMachineNode(node)) {
+    return (
+      <HeadscaleDetailsPanel node={node as HeadscaleNodeData} onClose={onClose} isOpen={isOpen} />
+    );
+  }
 
   const status = !node.online ? 'offline' : node.isExpiringSoon ? 'expiring' : 'online';
 
@@ -308,4 +324,91 @@ function formatRegisterMethod(method: string): string {
     REGISTER_METHOD_OIDC: 'OIDC',
   };
   return methods[method] || method;
+}
+
+/**
+ * Simplified details panel for Headscale server node
+ */
+function HeadscaleDetailsPanel({
+  node,
+  onClose,
+  isOpen,
+}: {
+  node: HeadscaleNodeData;
+  onClose: () => void;
+  isOpen: boolean;
+}) {
+  return (
+    <>
+      {/* Backdrop */}
+      {isOpen && (
+        <div
+          className="fixed inset-0 z-40 bg-background/50 backdrop-blur-sm lg:hidden"
+          onClick={onClose}
+        />
+      )}
+
+      {/* Panel */}
+      <div
+        className={cn(
+          'fixed bottom-0 right-0 top-0 z-50 w-[400px] max-w-[90vw] border-l border-border bg-card shadow-2xl',
+          'transform transition-transform duration-300 ease-out',
+          'flex flex-col',
+          isOpen ? 'translate-x-0' : 'translate-x-full'
+        )}
+      >
+        {/* Header */}
+        <header className="sticky top-0 z-10 border-b border-border bg-card p-4">
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex min-w-0 items-start gap-3">
+              <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg bg-blue-500/10">
+                <Server className="h-5 w-5 text-blue-500" />
+              </div>
+              <div className="min-w-0">
+                <h2 className="truncate text-lg font-semibold">{node.label}</h2>
+                <p className="truncate text-sm text-muted-foreground">Coordination Server</p>
+              </div>
+            </div>
+            <Button variant="ghost" size="icon" onClick={onClose}>
+              <X className="h-4 w-4" />
+            </Button>
+          </div>
+        </header>
+
+        {/* Content */}
+        <div className="flex-1 space-y-6 overflow-y-auto p-4">
+          {/* Status Section */}
+          <Section title="Status" icon={<Clock className="h-4 w-4" />}>
+            <div className="flex items-center gap-2">
+              <Badge className="bg-emerald-500 hover:bg-emerald-600">Online</Badge>
+              <span className="text-sm text-muted-foreground">Server is responsive</span>
+            </div>
+          </Section>
+
+          {/* Statistics Section */}
+          <Section title="Statistics" icon={<Network className="h-4 w-4" />}>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="rounded-lg border p-3 text-center">
+                <p className="text-2xl font-bold">{node.nodeCount}</p>
+                <p className="text-xs text-muted-foreground">Connected Nodes</p>
+              </div>
+              <div className="rounded-lg border p-3 text-center">
+                <p className="text-2xl font-bold">{node.userCount}</p>
+                <p className="text-xs text-muted-foreground">Users</p>
+              </div>
+            </div>
+          </Section>
+
+          {/* Server Info */}
+          {node.url && (
+            <Section title="Server URL">
+              <code className="block truncate rounded bg-muted px-2 py-1 font-mono text-sm">
+                {node.url}
+              </code>
+            </Section>
+          )}
+        </div>
+      </div>
+    </>
+  );
 }

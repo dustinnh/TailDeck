@@ -61,13 +61,13 @@ const authentikProvider = {
     },
   },
   profile(profile: AuthentikProfile) {
+    // Note: groups are NOT included here as they're not part of the User model
+    // Groups are accessed via profile.groups in the JWT callback for role sync
     return {
       id: profile.sub,
       name: profile.name ?? profile.preferred_username,
       email: profile.email,
       image: profile.picture,
-      // Pass groups through for processing in callbacks
-      groups: profile.groups ?? [],
     };
   },
 };

@@ -3,6 +3,22 @@
  */
 
 /**
+ * Get Authentik origin for CSP form-action
+ * Extracts origin from AUTH_AUTHENTIK_ISSUER env var
+ */
+const getAuthentikOrigin = () => {
+  const issuer = process.env.AUTH_AUTHENTIK_ISSUER;
+  if (issuer) {
+    try {
+      return new URL(issuer).origin;
+    } catch {
+      // Invalid URL, fall back to default
+    }
+  }
+  return 'http://localhost:9000';
+};
+
+/**
  * Security headers applied to all responses
  * These protect against common web vulnerabilities
  */
@@ -49,7 +65,7 @@ const cspHeader = `
   font-src 'self';
   object-src 'none';
   base-uri 'self';
-  form-action 'self' http://localhost:9000;
+  form-action 'self' ${getAuthentikOrigin()};
   frame-ancestors 'none';
 `
   .replace(/\s{2,}/g, ' ')

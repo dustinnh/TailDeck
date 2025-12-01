@@ -24,11 +24,15 @@ import type { RouteEdgeData } from './edges/route-edge';
 import { useElkLayout, calculateGridLayout } from './hooks/use-elk-layout';
 import { useTopologyData } from './hooks/use-topology-data';
 import { nodeTypes } from './nodes';
+import type { HeadscaleNodeData } from './nodes/headscale-node';
 import type { MachineNodeData } from './nodes/machine-node';
 import { TopologyDetailsPanel } from './topology-details-panel';
 import { TopologyLegend } from './topology-legend';
 
 import '@xyflow/react/dist/style.css';
+
+// Union type for all node data types in the topology
+type TopologyNodeData = MachineNodeData | HeadscaleNodeData;
 
 /**
  * Main Network Topology Component
@@ -39,9 +43,9 @@ function TopologyContent() {
   const { flowNodes, flowEdges, isLoading, error } = useTopologyData();
   const { isLayouting } = useElkLayout();
 
-  const [nodes, setNodes, onNodesChange] = useNodesState<FlowNode<MachineNodeData>>([]);
+  const [nodes, setNodes, onNodesChange] = useNodesState<FlowNode<TopologyNodeData>>([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState<FlowEdge<RouteEdgeData>>([]);
-  const [selectedNode, setSelectedNode] = useState<MachineNodeData | null>(null);
+  const [selectedNode, setSelectedNode] = useState<TopologyNodeData | null>(null);
   const [isPanelOpen, setIsPanelOpen] = useState(false);
   const [hasInitialLayout, setHasInitialLayout] = useState(false);
 
@@ -68,7 +72,7 @@ function TopologyContent() {
   }, [flowEdges, hasInitialLayout, setEdges]);
 
   // Handle node click to show details panel
-  const onNodeClick: NodeMouseHandler<FlowNode<MachineNodeData>> = useCallback((_event, node) => {
+  const onNodeClick: NodeMouseHandler<FlowNode<TopologyNodeData>> = useCallback((_event, node) => {
     setSelectedNode(node.data);
     setIsPanelOpen(true);
   }, []);
@@ -97,9 +101,13 @@ function TopologyContent() {
   }, []);
 
   // Color function for minimap
-  const getNodeColor = useCallback((node: FlowNode<MachineNodeData>) => {
-    if (node.data?.isExitNode) return '#8b5cf6'; // violet
-    if (node.data?.online) return '#10b981'; // emerald
+  const getNodeColor = useCallback((node: FlowNode<TopologyNodeData>) => {
+    // Headscale server node always blue
+    if (node.type === 'headscale') return '#3b82f6'; // blue
+    // Machine nodes
+    const machineData = node.data as MachineNodeData;
+    if (machineData?.isExitNode) return '#8b5cf6'; // violet
+    if (machineData?.online) return '#10b981'; // emerald
     return '#6b7280'; // gray
   }, []);
 

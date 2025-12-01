@@ -67,7 +67,7 @@ export interface OAuth2Provider {
   client_type: 'confidential' | 'public';
   client_id: string;
   client_secret?: string;
-  redirect_uris: RedirectURI[];
+  redirect_uris: string; // String format in Authentik 2024.2.2
   access_token_validity: string;
   refresh_token_validity: string;
   include_claims_in_id_token: boolean;
@@ -89,7 +89,7 @@ export interface OAuth2ProviderCreateRequest {
   client_type: 'confidential' | 'public';
   client_id?: string;
   client_secret?: string;
-  redirect_uris: RedirectURI[];
+  redirect_uris: string; // Newline-separated URIs string for API
   access_token_validity?: string;
   refresh_token_validity?: string;
   include_claims_in_id_token?: boolean;

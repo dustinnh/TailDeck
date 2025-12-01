@@ -4,8 +4,8 @@
 #
 
 # Source colors if not already loaded
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-source "${SCRIPT_DIR}/colors.sh" 2>/dev/null || true
+LIB_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "${LIB_DIR}/colors.sh" 2>/dev/null || true
 
 # Get the docker compose command (handles both plugin and standalone)
 get_docker_compose_cmd() {
@@ -25,7 +25,13 @@ docker_up() {
     compose_cmd=$(get_docker_compose_cmd)
 
     log_info "Starting Docker services..."
-    $compose_cmd up -d
+
+    # Use --env-file to load .env.local if it exists
+    if [ -f ".env.local" ]; then
+        $compose_cmd --env-file .env.local up -d
+    else
+        $compose_cmd up -d
+    fi
 
     if [ $? -eq 0 ]; then
         log_success "Docker services started"

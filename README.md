@@ -34,6 +34,7 @@ The setup script handles everything: Docker services, environment config, Authen
 
 ### Observability
 
+- **Network Topology**: Interactive visualization of your mesh network
 - **Flow Log Explorer**: Query and analyze network flow logs (Loki integration)
 - **Health Dashboard**: Real-time service health monitoring
 - **Audit Logging**: Track all changes with comprehensive audit trail
@@ -179,6 +180,29 @@ npm ci
 npm run build
 npm start
 ```
+
+### Reverse Proxy (Caddy)
+
+If using Caddy for TLS termination:
+
+```caddyfile
+taildeck.yourdomain.com {
+    reverse_proxy localhost:3000
+}
+
+auth.yourdomain.com {
+    reverse_proxy localhost:9000
+}
+
+headscale.yourdomain.com {
+    reverse_proxy localhost:8080
+}
+```
+
+**Important**: Update `.env.local` with external URLs:
+
+- `AUTH_URL` - Your TailDeck URL (e.g., `https://taildeck.yourdomain.com`)
+- `AUTH_AUTHENTIK_ISSUER` - Your Authentik URL (e.g., `https://auth.yourdomain.com/application/o/taildeck/`)
 
 See **[SETUP.md](./SETUP.md)** for production environment variables and TLS configuration.
 

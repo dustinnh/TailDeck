@@ -16,6 +16,9 @@
  *   AUTH_URL - TailDeck URL for redirect URI (default: http://localhost:3000)
  */
 
+import * as fs from 'fs';
+import * as path from 'path';
+
 import { createAuthentikClient } from '../src/server/authentik/client';
 
 // ANSI colors
@@ -45,8 +48,48 @@ function logInfo(message: string) {
   console.log(`${colors.blue}[INFO]${colors.reset} ${message}`);
 }
 
-function logWarn(message: string) {
-  console.log(`${colors.yellow}[WARN]${colors.reset} ${message}`);
+/**
+ * Update a value in .env.local file
+ * Creates the file if it doesn't exist, updates the value if it does
+ */
+function updateEnvFile(key: string, value: string): boolean {
+  const envPath = path.join(process.cwd(), '.env.local');
+
+  try {
+    let content = '';
+    if (fs.existsSync(envPath)) {
+      content = fs.readFileSync(envPath, 'utf-8');
+    }
+
+    const lines = content.split('\n');
+    let found = false;
+
+    // Look for the key and update it
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
+      // Match the key at the start of line (with optional quotes)
+      if (line && line.match(new RegExp(`^${key}=`))) {
+        lines[i] = `${key}="${value}"`;
+        found = true;
+        break;
+      }
+    }
+
+    // If not found, append it
+    if (!found) {
+      // Add a newline if the file doesn't end with one
+      if (content.length > 0 && !content.endsWith('\n')) {
+        lines.push('');
+      }
+      lines.push(`${key}="${value}"`);
+    }
+
+    fs.writeFileSync(envPath, lines.join('\n'));
+    return true;
+  } catch (error) {
+    logError(`Failed to update .env.local: ${error instanceof Error ? error.message : error}`);
+    return false;
+  }
 }
 
 async function main() {
@@ -122,32 +165,42 @@ async function main() {
   log('');
 
   if (result.clientSecret) {
-    log('┌─────────────────────────────────────────────────────────────┐', 'yellow');
-    log('│  IMPORTANT: Save the client secret below!                  │', 'yellow');
-    log('│  It will not be shown again.                               │', 'yellow');
-    log('└─────────────────────────────────────────────────────────────┘', 'yellow');
-    log('');
-    log(`AUTH_AUTHENTIK_SECRET=${result.clientSecret}`, 'cyan');
-    log('');
-    log('Add this to your .env.local file:', 'blue');
-    log(`  AUTH_AUTHENTIK_SECRET="${result.clientSecret}"`, 'cyan');
-    log('');
+    // Automatically update .env.local with the new client secret
+    if (updateEnvFile('AUTH_AUTHENTIK_SECRET', result.clientSecret)) {
+      logSuccess('Updated AUTH_AUTHENTIK_SECRET in .env.local');
+      log('');
+      log('┌─────────────────────────────────────────────────────────────┐', 'green');
+      log('│  Client secret has been saved to .env.local                │', 'green');
+      log('│  No manual configuration needed!                           │', 'green');
+      log('└─────────────────────────────────────────────────────────────┘', 'green');
+      log('');
+    } else {
+      // Fallback to manual instructions if auto-update fails
+      log('┌─────────────────────────────────────────────────────────────┐', 'yellow');
+      log('│  IMPORTANT: Save the client secret below!                  │', 'yellow');
+      log('│  It will not be shown again.                               │', 'yellow');
+      log('└─────────────────────────────────────────────────────────────┘', 'yellow');
+      log('');
+      log('Add this to your .env.local file:', 'blue');
+      log(`  AUTH_AUTHENTIK_SECRET="${result.clientSecret}"`, 'cyan');
+      log('');
+    }
   } else {
-    logWarn('OAuth2 provider already existed - client secret not regenerated');
-    log('If you need a new secret, delete the provider in Authentik and run again.');
+    // This should not happen with the current setup logic, but just in case
+    logError('No client secret was generated - this is unexpected');
+    log('Please check the Authentik configuration and try again.');
     log('');
   }
 
   log('--- Next Steps ---', 'cyan');
-  log('1. Update .env.local with AUTH_AUTHENTIK_SECRET (if new)');
-  log('2. Complete Authentik initial setup at:');
+  log('1. Complete Authentik initial setup at:');
   log(`   ${authentikUrl}/if/flow/initial-setup/`, 'cyan');
-  log('3. Assign users to groups for role-based access:');
+  log('2. Assign users to groups for role-based access:');
   log('   - TailDeck Admins -> ADMIN role');
   log('   - TailDeck Operators -> OPERATOR role');
   log('   - TailDeck Auditors -> AUDITOR role');
   log('   - TailDeck Users -> USER role');
-  log('4. Start TailDeck: npm run dev');
+  log('3. Start TailDeck: npm run dev');
   log('');
 }
 

@@ -18,15 +18,12 @@ import {
   listUsersResponseSchema,
   getUserResponseSchema,
   createUserResponseSchema,
-  listRoutesResponseSchema,
-  getRouteResponseSchema,
   listPreAuthKeysResponseSchema,
   createPreAuthKeyResponseSchema,
   getPolicyResponseSchema,
   setPolicyResponseSchema,
   listApiKeysResponseSchema,
   createApiKeyResponseSchema,
-  getDNSResponseSchema,
 } from './schemas';
 import type {
   ListNodesResponse,
@@ -336,42 +333,143 @@ class HeadscaleClient {
 
   // =========================
   // Route Operations
+  // In Headscale 0.27+, routes are embedded in node objects
   // =========================
 
   /**
    * List all routes in Headscale
+   * In 0.27+, routes are derived from nodes' availableRoutes/approvedRoutes fields
    */
   async listRoutes(): Promise<ListRoutesResponse> {
-    return this.request<ListRoutesResponse>('/routes', { method: 'GET' }, listRoutesResponseSchema);
+    // Get all nodes and extract routes from them
+    const nodesResponse = await this.listNodes();
+    const routes: ListRoutesResponse['routes'] = [];
+
+    for (const node of nodesResponse.nodes) {
+      const availableRoutes = node.availableRoutes || [];
+      const approvedRoutes = new Set(node.approvedRoutes || []);
+
+      for (const prefix of availableRoutes) {
+        routes.push({
+          id: `${node.id}-${prefix.replace(/[\/.:]/g, '-')}`, // Synthetic ID
+          node: node,
+          prefix,
+          advertised: true,
+          enabled: approvedRoutes.has(prefix),
+          isPrimary: true, // Can't determine this from node data
+          createdAt: node.createdAt,
+        });
+      }
+    }
+
+    return { routes };
   }
 
   /**
-   * Enable a route
+   * Enable a route (approve it on the node)
+   * In 0.27+, use POST /node/{nodeId}/approve_routes
    */
   async enableRoute(routeId: string): Promise<GetRouteResponse> {
-    return this.request<GetRouteResponse>(
-      `/routes/${routeId}/enable`,
-      { method: 'POST' },
-      getRouteResponseSchema
-    );
+    // Parse the synthetic routeId to get nodeId
+    const parts = routeId.split('-');
+    const nodeId = parts[0];
+    if (!nodeId) {
+      throw new HeadscaleClientError(`Invalid route ID: ${routeId}`, 400);
+    }
+    // Get node and find matching route
+    const nodeResponse = await this.getNode(nodeId);
+    const node = nodeResponse.node;
+    const availableRoutes = node.availableRoutes || [];
+    const approvedRoutes = new Set(node.approvedRoutes || []);
+
+    // Find the route that matches this synthetic ID
+    let targetPrefix: string | undefined;
+    for (const prefix of availableRoutes) {
+      const syntheticId = `${nodeId}-${prefix.replace(/[\/.:]/g, '-')}`;
+      if (syntheticId === routeId) {
+        targetPrefix = prefix;
+        break;
+      }
+    }
+
+    if (!targetPrefix) {
+      throw new HeadscaleClientError(`Route ${routeId} not found`, 404);
+    }
+
+    // Add this prefix to approved routes
+    approvedRoutes.add(targetPrefix);
+
+    await this.request(`/node/${nodeId}/approve_routes`, {
+      method: 'POST',
+      body: JSON.stringify({ routes: Array.from(approvedRoutes) }),
+    });
+
+    return {
+      route: {
+        id: routeId,
+        node,
+        prefix: targetPrefix,
+        advertised: true,
+        enabled: true,
+        isPrimary: true,
+      },
+    };
   }
 
   /**
-   * Disable a route
+   * Disable a route (remove it from approved routes)
+   * In 0.27+, use POST /node/{nodeId}/approve_routes with the route removed
    */
   async disableRoute(routeId: string): Promise<GetRouteResponse> {
-    return this.request<GetRouteResponse>(
-      `/routes/${routeId}/disable`,
-      { method: 'POST' },
-      getRouteResponseSchema
-    );
+    const parts = routeId.split('-');
+    const nodeId = parts[0];
+    if (!nodeId) {
+      throw new HeadscaleClientError(`Invalid route ID: ${routeId}`, 400);
+    }
+    const nodeResponse = await this.getNode(nodeId);
+    const node = nodeResponse.node;
+    const availableRoutes = node.availableRoutes || [];
+    const approvedRoutes = new Set(node.approvedRoutes || []);
+
+    // Find the route that matches this synthetic ID
+    let targetPrefix: string | undefined;
+    for (const prefix of availableRoutes) {
+      const syntheticId = `${nodeId}-${prefix.replace(/[\/.:]/g, '-')}`;
+      if (syntheticId === routeId) {
+        targetPrefix = prefix;
+        break;
+      }
+    }
+
+    if (!targetPrefix) {
+      throw new HeadscaleClientError(`Route ${routeId} not found`, 404);
+    }
+
+    // Remove this prefix from approved routes
+    approvedRoutes.delete(targetPrefix);
+
+    await this.request(`/node/${nodeId}/approve_routes`, {
+      method: 'POST',
+      body: JSON.stringify({ routes: Array.from(approvedRoutes) }),
+    });
+
+    return {
+      route: {
+        id: routeId,
+        node,
+        prefix: targetPrefix,
+        advertised: true,
+        enabled: false,
+        isPrimary: true,
+      },
+    };
   }
 
   /**
-   * Delete a route
+   * Delete a route - in 0.27+, routes can't be deleted, only disabled
    */
   async deleteRoute(routeId: string): Promise<void> {
-    await this.request(`/routes/${routeId}`, { method: 'DELETE' });
+    await this.disableRoute(routeId);
   }
 
   // =========================
@@ -488,26 +586,31 @@ class HeadscaleClient {
 
   // =========================
   // DNS Operations
+  // Note: DNS configuration in Headscale 0.27+ is managed via config file,
+  // not via API. These methods throw an error indicating this.
   // =========================
 
   /**
    * Get DNS configuration
+   * Note: Not available via API in Headscale 0.27+
    */
   async getDNS(): Promise<GetDNSResponse> {
-    return this.request<GetDNSResponse>('/dns', { method: 'GET' }, getDNSResponseSchema);
+    throw new HeadscaleClientError(
+      'DNS configuration is managed via Headscale config file, not API',
+      501,
+      'NOT_IMPLEMENTED'
+    );
   }
 
   /**
    * Update DNS configuration
+   * Note: Not available via API in Headscale 0.27+
    */
-  async setDNS(config: Partial<DNSConfiguration>): Promise<GetDNSResponse> {
-    return this.request<GetDNSResponse>(
-      '/dns',
-      {
-        method: 'PUT',
-        body: JSON.stringify(config),
-      },
-      getDNSResponseSchema
+  async setDNS(_config: Partial<DNSConfiguration>): Promise<GetDNSResponse> {
+    throw new HeadscaleClientError(
+      'DNS configuration is managed via Headscale config file, not API',
+      501,
+      'NOT_IMPLEMENTED'
     );
   }
 }

@@ -27,16 +27,6 @@ RUN npx prisma generate
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV NODE_ENV=production
 
-# Build arguments for build-time environment variables
-ARG DATABASE_URL
-ARG AUTH_SECRET
-ARG AUTH_URL
-ARG AUTH_AUTHENTIK_ID
-ARG AUTH_AUTHENTIK_SECRET
-ARG AUTH_AUTHENTIK_ISSUER
-ARG HEADSCALE_URL
-ARG HEADSCALE_API_KEY
-
 RUN npm run build
 
 # Runner stage (production)

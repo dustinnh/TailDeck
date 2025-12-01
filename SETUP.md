@@ -211,6 +211,38 @@ For production, place a reverse proxy (Caddy, nginx, Traefik) in front of TailDe
 Client → Reverse Proxy (TLS) → TailDeck (HTTP internal)
 ```
 
+### Caddy Reverse Proxy
+
+Example Caddyfile for production:
+
+```caddyfile
+# TailDeck Dashboard
+taildeck.yourdomain.com {
+    reverse_proxy localhost:3000
+}
+
+# Authentik (OIDC Provider)
+auth.yourdomain.com {
+    reverse_proxy localhost:9000
+}
+
+# Headscale (VPN Control Server)
+headscale.yourdomain.com {
+    reverse_proxy localhost:8080
+}
+```
+
+**Important URL Configuration**:
+
+The following environment variables must be set to **externally accessible URLs** (what users see in their browser):
+
+| Variable                | Description           | Example                                               |
+| ----------------------- | --------------------- | ----------------------------------------------------- |
+| `AUTH_URL`              | TailDeck's public URL | `https://taildeck.yourdomain.com`                     |
+| `AUTH_AUTHENTIK_ISSUER` | Authentik OIDC issuer | `https://auth.yourdomain.com/application/o/taildeck/` |
+
+These are **browser redirect URLs**, so they must be reachable from the user's machine, not just from Docker containers.
+
 ---
 
 ## Authentik Configuration

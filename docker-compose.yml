@@ -78,6 +78,9 @@ services:
     image: ghcr.io/goauthentik/server:2024.2.2
     container_name: authentik-server
     command: server
+    env_file:
+      - path: .env.local
+        required: false
     environment:
       AUTHENTIK_SECRET_KEY: "taildeck-dev-secret-key-change-in-production"
       AUTHENTIK_REDIS__HOST: redis
@@ -111,6 +114,9 @@ services:
     image: ghcr.io/goauthentik/server:2024.2.2
     container_name: authentik-worker
     command: worker
+    env_file:
+      - path: .env.local
+        required: false
     environment:
       AUTHENTIK_SECRET_KEY: "taildeck-dev-secret-key-change-in-production"
       AUTHENTIK_REDIS__HOST: redis
@@ -135,7 +141,7 @@ services:
   # Access API at: http://localhost:8080
   # ===========================================
   headscale:
-    image: headscale/headscale:0.23
+    image: headscale/headscale:0.27.1
     container_name: headscale
     command: serve
     ports:
@@ -155,10 +161,8 @@ services:
   # ===========================================
   # Loki (Log Aggregation for Flow Logs)
   # API at: http://localhost:3100
-  # Enable with: docker compose --profile logs up
   # ===========================================
   loki:
-    profiles: ["logs"]
     image: grafana/loki:2.9.4
     container_name: taildeck-loki
     command: -config.file=/etc/loki/local-config.yaml
@@ -177,10 +181,8 @@ services:
   # ===========================================
   # Promtail (Log Collector for Loki)
   # Collects logs and ships to Loki
-  # Enable with: docker compose --profile logs up
   # ===========================================
   promtail:
-    profiles: ["logs"]
     image: grafana/promtail:2.9.4
     container_name: taildeck-promtail
     volumes:
@@ -205,26 +207,22 @@ services:
     container_name: taildeck-app
     ports:
       - "3000:3000"
+    env_file:
+      - path: .env.local
+        required: true
     environment:
-      # Database (use internal Docker network)
+      # Override these with Docker internal network addresses
       DATABASE_URL: "postgresql://taildeck:taildeck_dev@postgres:5432/taildeck"
-      # Auth.js
-      AUTH_SECRET: ${AUTH_SECRET:-change-me-in-production}
-      AUTH_URL: "http://localhost:3000"
-      AUTH_TRUST_HOST: "true"
-      # Authentik OIDC (use Docker internal for server, external for browser)
-      AUTH_AUTHENTIK_ID: ${AUTH_AUTHENTIK_ID:-taildeck}
-      AUTH_AUTHENTIK_SECRET: ${AUTH_AUTHENTIK_SECRET:-}
-      AUTH_AUTHENTIK_ISSUER: "http://authentik-server:9000/application/o/taildeck/"
-      # Headscale (internal network)
       HEADSCALE_URL: "http://headscale:8080"
-      HEADSCALE_API_KEY: ${HEADSCALE_API_KEY:-}
-      # Logging
-      LOG_LEVEL: ${LOG_LEVEL:-info}
+      HEADSCALE_METRICS_URL: "http://headscale:9090/metrics"
+      LOKI_URL: "http://loki:3100"
+      AUTH_TRUST_HOST: "true"
     depends_on:
       postgres:
         condition: service_healthy
       headscale:
+        condition: service_healthy
+      loki:
         condition: service_healthy
     healthcheck:
       test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/api/health"]

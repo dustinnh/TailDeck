@@ -4,8 +4,8 @@
 #
 
 # Source colors if not already loaded
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-source "${SCRIPT_DIR}/colors.sh" 2>/dev/null || true
+LIB_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "${LIB_DIR}/colors.sh" 2>/dev/null || true
 
 # Default Authentik configuration
 AUTHENTIK_URL="${AUTHENTIK_URL:-http://localhost:9000}"
