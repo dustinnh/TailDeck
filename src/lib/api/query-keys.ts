@@ -80,6 +80,32 @@ export const queryKeys = {
     all: ['apiKeys'] as const,
     list: () => [...queryKeys.apiKeys.all, 'list'] as const,
   },
+
+  // Flow log queries
+  flowLogs: {
+    all: ['flowLogs'] as const,
+    query: (params?: {
+      query?: string;
+      start?: string;
+      end?: string;
+      limit?: number;
+      direction?: 'forward' | 'backward';
+    }) => [...queryKeys.flowLogs.all, 'query', params] as const,
+    labels: (timeRange?: { start?: string; end?: string }) =>
+      [...queryKeys.flowLogs.all, 'labels', timeRange] as const,
+    labelValues: (labelName: string, timeRange?: { start?: string; end?: string }) =>
+      [...queryKeys.flowLogs.all, 'labelValues', labelName, timeRange] as const,
+    health: () => [...queryKeys.flowLogs.all, 'health'] as const,
+  },
+
+  // Setup wizard queries
+  setup: {
+    all: ['setup'] as const,
+    status: () => [...queryKeys.setup.all, 'status'] as const,
+    diagnostics: () => [...queryKeys.setup.all, 'diagnostics'] as const,
+    service: (name: string) => [...queryKeys.setup.all, 'service', name] as const,
+    warnings: () => [...queryKeys.setup.all, 'warnings'] as const,
+  },
 } as const;
 
 /**

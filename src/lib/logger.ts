@@ -34,6 +34,7 @@ const REDACT_PATHS = [
   '*.AUTH_SECRET',
   '*.AUTH_AUTHENTIK_SECRET',
   '*.DATABASE_URL',
+  '*.LOKI_PASSWORD',
 
   // Auth.js specific
   '*.credentials',

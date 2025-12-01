@@ -85,6 +85,12 @@ services:
       AUTHENTIK_POSTGRESQL__USER: authentik
       AUTHENTIK_POSTGRESQL__PASSWORD: authentik_dev
       AUTHENTIK_POSTGRESQL__NAME: authentik
+      # Bootstrap token for automated configuration
+      # Generate with: openssl rand -hex 32
+      AUTHENTIK_BOOTSTRAP_TOKEN: ${AUTHENTIK_BOOTSTRAP_TOKEN:-}
+      # Optional: Bootstrap initial admin user
+      AUTHENTIK_BOOTSTRAP_EMAIL: ${AUTHENTIK_BOOTSTRAP_EMAIL:-}
+      AUTHENTIK_BOOTSTRAP_PASSWORD: ${AUTHENTIK_BOOTSTRAP_PASSWORD:-}
     ports:
       - "9000:9000"
       - "9443:9443"
@@ -112,6 +118,7 @@ services:
       AUTHENTIK_POSTGRESQL__USER: authentik
       AUTHENTIK_POSTGRESQL__PASSWORD: authentik_dev
       AUTHENTIK_POSTGRESQL__NAME: authentik
+      AUTHENTIK_BOOTSTRAP_TOKEN: ${AUTHENTIK_BOOTSTRAP_TOKEN:-}
     volumes:
       - authentik_media:/media
       - authentik_templates:/templates
@@ -143,6 +150,46 @@ services:
       timeout: 10s
       retries: 3
       start_period: 10s
+    restart: unless-stopped
+
+  # ===========================================
+  # Loki (Log Aggregation for Flow Logs)
+  # API at: http://localhost:3100
+  # Enable with: docker compose --profile logs up
+  # ===========================================
+  loki:
+    profiles: ["logs"]
+    image: grafana/loki:2.9.4
+    container_name: taildeck-loki
+    command: -config.file=/etc/loki/local-config.yaml
+    ports:
+      - "3100:3100"
+    volumes:
+      - ./loki/loki-config.yaml:/etc/loki/local-config.yaml:ro
+      - loki_data:/loki
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:3100/ready || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  # ===========================================
+  # Promtail (Log Collector for Loki)
+  # Collects logs and ships to Loki
+  # Enable with: docker compose --profile logs up
+  # ===========================================
+  promtail:
+    profiles: ["logs"]
+    image: grafana/promtail:2.9.4
+    container_name: taildeck-promtail
+    volumes:
+      - ./loki/promtail-config.yaml:/etc/promtail/config.yml:ro
+      - /var/log:/var/log:ro
+    command: -config.file=/etc/promtail/config.yml
+    depends_on:
+      loki:
+        condition: service_healthy
     restart: unless-stopped
 
   # ===========================================
@@ -194,3 +241,4 @@ volumes:
   authentik_media:
   authentik_templates:
   headscale_data:
+  loki_data:

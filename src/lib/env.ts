@@ -30,6 +30,13 @@ const serverEnvSchema = z.object({
   // Optional: Headscale metrics endpoint (for future observability features)
   HEADSCALE_METRICS_URL: z.string().url().optional(),
 
+  // Optional: Flow Log Integration (Loki)
+  LOKI_URL: z.string().url().optional(),
+  LOKI_TENANT_ID: z.string().optional(),
+  LOKI_USERNAME: z.string().optional(),
+  LOKI_PASSWORD: z.string().optional(),
+  LOKI_TIMEOUT: z.coerce.number().int().min(1000).max(120000).optional(),
+
   // Optional: Logging
   LOG_LEVEL: z.enum(['trace', 'debug', 'info', 'warn', 'error', 'fatal']).default('info'),
 });

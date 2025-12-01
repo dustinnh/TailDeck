@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 
-import { HealthClient } from './health-client';
+import { HealthTabs } from './health-tabs';
 
 export const metadata: Metadata = {
   title: 'Health - TailDeck',
@@ -14,7 +14,7 @@ export default function HealthPage() {
         <h1 className="text-3xl font-bold tracking-tight">Health</h1>
         <p className="text-muted-foreground">Network health and connectivity status</p>
       </div>
-      <HealthClient />
+      <HealthTabs />
     </div>
   );
 }

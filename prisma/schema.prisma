@@ -27,10 +27,11 @@ model User {
   isActive Boolean @default(true) @map("is_active")
 
   // Relations
-  accounts  Account[]
-  sessions  Session[]
-  userRoles UserRole[]
-  auditLogs AuditLog[]
+  accounts       Account[]
+  sessions       Session[]
+  userRoles      UserRole[]
+  auditLogs      AuditLog[]
+  systemSettings SystemSettings[]
 
   // Timestamps
   createdAt DateTime @default(now()) @map("created_at")
@@ -183,4 +184,30 @@ model AuditLog {
   @@index([resourceType])
   @@index([timestamp])
   @@map("audit_logs")
+}
+
+// ============================================
+// SYSTEM SETTINGS
+// Tracks setup completion and system health
+// ============================================
+
+model SystemSettings {
+  id                String    @id @default("default")
+  setupCompletedAt  DateTime? @map("setup_completed_at")
+  setupCompletedBy  String?   @map("setup_completed_by")
+  setupVersion      Int       @default(1) @map("setup_version")
+  lastHealthCheck   DateTime? @map("last_health_check")
+  lastHealthStatus  Json?     @db.JsonB @map("last_health_status")
+
+  // Dismissed security warnings
+  dismissedWarnings String[]  @default([]) @map("dismissed_warnings")
+
+  // Timestamps
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  completedByUser User? @relation(fields: [setupCompletedBy], references: [id], onDelete: SetNull)
+
+  @@map("system_settings")
 }
