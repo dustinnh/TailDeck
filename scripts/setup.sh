@@ -93,6 +93,8 @@ if [ "$QUICK_MODE" = true ]; then
     TAILDECK_DOMAIN="localhost"
     AUTH_URL="http://localhost:3000"
     HEADSCALE_URL="http://localhost:8080"
+    AUTHENTIK_PUBLIC_URL="http://localhost:9000"
+    AUTH_AUTHENTIK_ISSUER="http://localhost:9000/application/o/taildeck/"
     MAGIC_DNS_ENABLED="true"
     MAGIC_DNS_DOMAIN="taildeck.local"
 else
@@ -104,7 +106,7 @@ fi
 # Step 1: Pre-flight Checks
 ###########################################
 
-step_init 8
+step_init 9
 step_next "Pre-flight Checks"
 
 if ! preflight_checks; then
@@ -152,6 +154,14 @@ if [ ! -f ".env.local" ]; then
         sed -i "s|AUTH_URL=.*|AUTH_URL=\"${AUTH_URL}\"|" .env.local
     fi
     log_success "Set AUTH_URL to ${AUTH_URL}"
+
+    # Update AUTH_AUTHENTIK_ISSUER (critical for OIDC in production)
+    if [[ "$OSTYPE" == "darwin"* ]]; then
+        sed -i '' "s|AUTH_AUTHENTIK_ISSUER=.*|AUTH_AUTHENTIK_ISSUER=\"${AUTH_AUTHENTIK_ISSUER}\"|" .env.local
+    else
+        sed -i "s|AUTH_AUTHENTIK_ISSUER=.*|AUTH_AUTHENTIK_ISSUER=\"${AUTH_AUTHENTIK_ISSUER}\"|" .env.local
+    fi
+    log_success "Set AUTH_AUTHENTIK_ISSUER to ${AUTH_AUTHENTIK_ISSUER}"
 fi
 
 # Generate Authentik bootstrap token if empty or not set
@@ -365,12 +375,31 @@ security_checks "$AUTH_URL" "$AUTH_SECRET" "$TAILDECK_ENV"
 # Summary
 ###########################################
 
+###########################################
+# Step 9: Production Build (if applicable)
+###########################################
+
+if [ "$TAILDECK_ENV" = "production" ]; then
+    step_next "Building for Production"
+
+    log_info "Building TailDeck for production..."
+    log_info "This ensures environment variables are baked into the build correctly."
+
+    # Run the build
+    if npm run build; then
+        log_success "Production build complete"
+    else
+        log_error "Production build failed"
+        log_info "Try running 'npm run build' manually after fixing any issues"
+    fi
+fi
+
 header "Setup Complete!"
 
 echo -e "${GREEN}TailDeck is ready!${NC}"
 echo ""
 
-echo -e "${BOLD}Services:${NC}"
+echo -e "${BOLD}Services (internal):${NC}"
 echo "  - PostgreSQL:  localhost:5432"
 echo "  - Authentik:   http://localhost:9000"
 echo "  - Headscale:   http://localhost:8080"
@@ -379,6 +408,8 @@ echo ""
 echo -e "${BOLD}Configuration:${NC}"
 echo "  - Environment: ${TAILDECK_ENV}"
 echo "  - TailDeck URL: ${AUTH_URL}"
+echo "  - Authentik URL: ${AUTHENTIK_PUBLIC_URL:-http://localhost:9000}"
+echo "  - Headscale URL: ${HEADSCALE_URL}"
 echo "  - MagicDNS: ${MAGIC_DNS_ENABLED}"
 if [ "$MAGIC_DNS_ENABLED" = "true" ]; then
     echo "  - MagicDNS Domain: ${MAGIC_DNS_DOMAIN}"
@@ -386,17 +417,37 @@ fi
 echo ""
 
 echo -e "${BOLD}Next Steps:${NC}"
-echo "  1. Complete Authentik initial setup (if not done):"
-echo "     http://localhost:9000/if/flow/initial-setup/"
-echo ""
-echo "  2. Update AUTH_AUTHENTIK_SECRET in .env.local (if needed)"
-echo ""
-echo "  3. Start the development server:"
-echo ""
-echo -e "     ${GREEN}npm run dev${NC}"
-echo ""
-echo "  4. Open http://localhost:3000"
-echo "  5. Sign in with Authentik - first user becomes OWNER"
+
+if [ "$TAILDECK_ENV" = "production" ]; then
+    # Production next steps
+    echo "  1. Complete Authentik initial setup:"
+    echo "     ${AUTHENTIK_PUBLIC_URL}/if/flow/initial-setup/"
+    echo ""
+    echo "  2. Build and start TailDeck for production:"
+    echo ""
+    echo -e "     ${GREEN}npm run build && npm run start${NC}"
+    echo ""
+    echo "  3. Open ${AUTH_URL}"
+    echo "  4. Sign in with Authentik - first user becomes OWNER"
+    echo ""
+    echo -e "${BOLD}Production Notes:${NC}"
+    echo "  - Ensure your reverse proxy (Caddy/nginx) is configured"
+    echo "  - SSL certificates should be set up for all domains"
+    echo "  - Run 'npm run build' after any .env.local changes"
+else
+    # Development next steps
+    echo "  1. Complete Authentik initial setup (if not done):"
+    echo "     http://localhost:9000/if/flow/initial-setup/"
+    echo ""
+    echo "  2. Update AUTH_AUTHENTIK_SECRET in .env.local (if needed)"
+    echo ""
+    echo "  3. Start the development server:"
+    echo ""
+    echo -e "     ${GREEN}npm run dev${NC}"
+    echo ""
+    echo "  4. Open http://localhost:3000"
+    echo "  5. Sign in with Authentik - first user becomes OWNER"
+fi
 echo ""
 
 echo -e "${BOLD}Useful Commands:${NC}"

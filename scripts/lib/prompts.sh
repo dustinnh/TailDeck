@@ -278,6 +278,17 @@ collect_setup_config() {
     fi
     prompt_url "Headscale public URL:" "$DEFAULT_HEADSCALE_URL" HEADSCALE_URL
 
+    # Authentik URL (for OIDC)
+    if [ "$TAILDECK_ENV" = "development" ]; then
+        DEFAULT_AUTHENTIK_URL="http://localhost:9000"
+    else
+        DEFAULT_AUTHENTIK_URL="${URL_SCHEME}://auth.${TAILDECK_DOMAIN}"
+    fi
+    prompt_url "Authentik public URL:" "$DEFAULT_AUTHENTIK_URL" AUTHENTIK_PUBLIC_URL
+
+    # Build AUTH_AUTHENTIK_ISSUER from Authentik URL
+    AUTH_AUTHENTIK_ISSUER="${AUTHENTIK_PUBLIC_URL}/application/o/taildeck/"
+
     subheader "MagicDNS Configuration"
 
     prompt_confirm "Enable MagicDNS?" "y" && MAGIC_DNS_ENABLED="true" || MAGIC_DNS_ENABLED="false"
@@ -302,6 +313,7 @@ collect_setup_config() {
     config_summary \
         "Environment" "$TAILDECK_ENV" \
         "TailDeck URL" "$AUTH_URL" \
+        "Authentik URL" "$AUTHENTIK_PUBLIC_URL" \
         "Headscale URL" "$HEADSCALE_URL" \
         "MagicDNS" "$MAGIC_DNS_ENABLED" \
         "MagicDNS Domain" "${MAGIC_DNS_DOMAIN:-N/A}" \
@@ -318,6 +330,8 @@ collect_setup_config() {
     export TAILDECK_DOMAIN
     export AUTH_URL
     export HEADSCALE_URL
+    export AUTHENTIK_PUBLIC_URL
+    export AUTH_AUTHENTIK_ISSUER
     export MAGIC_DNS_ENABLED
     export MAGIC_DNS_DOMAIN
     export ADMIN_EMAIL
