@@ -139,6 +139,32 @@ async function main() {
   logSuccess(`Authentik API is healthy (version: ${health.version || 'unknown'})`);
   log('');
 
+  // Wait for blueprints to initialize (creates default flows)
+  // This can take 30-45 seconds on lower-end VPS systems
+  logInfo('Waiting for Authentik blueprints to initialize...');
+  logInfo('(This may take up to 60 seconds on first startup)');
+
+  const flowsReady = await client.waitForFlowsReady(30, 2000, (attempt, max) => {
+    // Show progress every 5 attempts (10 seconds)
+    if (attempt % 5 === 0) {
+      log(`  Still waiting... (${attempt}/${max})`);
+    }
+  });
+
+  if (!flowsReady) {
+    logError('Authentik blueprints did not initialize in time');
+    log('\nThe authorization flow was not found after 60 seconds.');
+    log('This can happen if:');
+    log('  - Authentik is still starting up (try running this script again)');
+    log('  - The database needs more time to initialize');
+    log('  - There is a problem with Authentik configuration\n');
+    log('Try running: docker compose logs authentik-server');
+    process.exit(1);
+  }
+
+  logSuccess('Authentik blueprints initialized');
+  log('');
+
   // Run setup
   const redirectUri = `${authUrl}/api/auth/callback/authentik`;
   logInfo(`Redirect URI: ${redirectUri}`);

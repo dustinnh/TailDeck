@@ -243,6 +243,42 @@ class AuthentikClient {
     );
   }
 
+  /**
+   * Wait for Authentik blueprints to initialize and flows to be available.
+   * Authentik creates default flows from blueprints during startup, which can
+   * take 30-45 seconds on lower-end VPS systems.
+   *
+   * @param maxAttempts - Maximum number of attempts (default: 30)
+   * @param delayMs - Delay between attempts in milliseconds (default: 2000)
+   * @param onProgress - Optional callback for progress updates
+   * @returns true if flows are ready, false if timed out
+   */
+  async waitForFlowsReady(
+    maxAttempts = 30,
+    delayMs = 2000,
+    onProgress?: (attempt: number, maxAttempts: number) => void
+  ): Promise<boolean> {
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+      try {
+        const flow = await this.getAuthorizationFlow();
+        if (flow) {
+          return true;
+        }
+      } catch {
+        // Ignore errors during wait - API might not be fully ready
+      }
+
+      if (onProgress) {
+        onProgress(attempt, maxAttempts);
+      }
+
+      if (attempt < maxAttempts) {
+        await new Promise((resolve) => setTimeout(resolve, delayMs));
+      }
+    }
+    return false;
+  }
+
   // ============================================
   // Scope Mapping Operations
   // ============================================
