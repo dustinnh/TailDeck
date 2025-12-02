@@ -1,5 +1,3 @@
-version: "3.8"
-
 # =============================================
 # TailDeck Docker Compose
 #
@@ -10,6 +8,10 @@ version: "3.8"
 #
 #   Full stack (containerized):
 #     docker compose --profile app up -d
+#
+# Port Configuration:
+#   All ports are configurable via environment variables.
+#   See .env.example for available options.
 #
 # =============================================
 
@@ -55,27 +57,12 @@ services:
     restart: unless-stopped
 
   # ===========================================
-  # Redis (required by Authentik)
-  # ===========================================
-  redis:
-    image: redis:7-alpine
-    container_name: taildeck-redis
-    volumes:
-      - redis_data:/data
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-    restart: unless-stopped
-
-  # ===========================================
   # Authentik Server (OIDC Provider)
   # Access at: http://localhost:9000
   # Initial setup: http://localhost:9000/if/flow/initial-setup/
   # ===========================================
   authentik-server:
-    image: ghcr.io/goauthentik/server:2024.2.2
+    image: ghcr.io/goauthentik/server:2025.10
     container_name: authentik-server
     command: server
     env_file:
@@ -83,7 +70,6 @@ services:
         required: false
     environment:
       AUTHENTIK_SECRET_KEY: "taildeck-dev-secret-key-change-in-production"
-      AUTHENTIK_REDIS__HOST: redis
       AUTHENTIK_POSTGRESQL__HOST: authentik-postgres
       AUTHENTIK_POSTGRESQL__USER: authentik
       AUTHENTIK_POSTGRESQL__PASSWORD: authentik_dev
@@ -95,15 +81,13 @@ services:
       AUTHENTIK_BOOTSTRAP_EMAIL: ${AUTHENTIK_BOOTSTRAP_EMAIL:-}
       AUTHENTIK_BOOTSTRAP_PASSWORD: ${AUTHENTIK_BOOTSTRAP_PASSWORD:-}
     ports:
-      - "9000:9000"
-      - "9443:9443"
+      - "${AUTHENTIK_HTTP_PORT:-9000}:9000"
+      - "${AUTHENTIK_HTTPS_PORT:-9443}:9443"
     volumes:
       - authentik_media:/media
       - authentik_templates:/templates
     depends_on:
       authentik-postgres:
-        condition: service_healthy
-      redis:
         condition: service_healthy
     restart: unless-stopped
 
@@ -111,7 +95,7 @@ services:
   # Authentik Worker (background tasks)
   # ===========================================
   authentik-worker:
-    image: ghcr.io/goauthentik/server:2024.2.2
+    image: ghcr.io/goauthentik/server:2025.10
     container_name: authentik-worker
     command: worker
     env_file:
@@ -119,7 +103,6 @@ services:
         required: false
     environment:
       AUTHENTIK_SECRET_KEY: "taildeck-dev-secret-key-change-in-production"
-      AUTHENTIK_REDIS__HOST: redis
       AUTHENTIK_POSTGRESQL__HOST: authentik-postgres
       AUTHENTIK_POSTGRESQL__USER: authentik
       AUTHENTIK_POSTGRESQL__PASSWORD: authentik_dev
@@ -132,8 +115,6 @@ services:
     depends_on:
       authentik-postgres:
         condition: service_healthy
-      redis:
-        condition: service_healthy
     restart: unless-stopped
 
   # ===========================================
@@ -145,8 +126,8 @@ services:
     container_name: headscale
     command: serve
     ports:
-      - "8080:8080"
-      - "9090:9090"
+      - "${HEADSCALE_API_PORT:-8080}:8080"
+      - "${HEADSCALE_METRICS_PORT:-9090}:9090"
     volumes:
       - ./headscale/config.yaml:/etc/headscale/config.yaml:ro
       - headscale_data:/var/lib/headscale
@@ -167,9 +148,9 @@ services:
     image: netsampler/goflow2:latest
     container_name: taildeck-goflow
     ports:
-      - "2055:2055/udp"
-      - "6343:6343/udp"
-      - "4739:4739/udp"
+      - "${NETFLOW_PORT:-2055}:2055/udp"
+      - "${SFLOW_PORT:-6343}:6343/udp"
+      - "${IPFIX_PORT:-4739}:4739/udp"
     volumes:
       - goflow_data:/flows
     command: ["-transport.file", "/flows/flows.json", "-format", "json"]
@@ -187,7 +168,7 @@ services:
       dockerfile: Dockerfile
     container_name: taildeck-app
     ports:
-      - "3000:3000"
+      - "${TAILDECK_PORT:-3000}:3000"
     env_file:
       - path: .env.local
         required: true
@@ -216,7 +197,6 @@ services:
 volumes:
   postgres_data:
   authentik_postgres_data:
-  redis_data:
   authentik_media:
   authentik_templates:
   headscale_data:

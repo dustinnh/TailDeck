@@ -73,7 +73,7 @@ Interactive setup wizard that automates the entire first-time configuration:
    - Generates `AUTHENTIK_BOOTSTRAP_TOKEN` for API automation
 3. **Dependency installation**: Runs `npm install`
 4. **Headscale configuration**: Generates `headscale/config.yaml` from template
-5. **Docker services**: Starts all infrastructure (PostgreSQL, Redis, Authentik, Headscale, Loki)
+5. **Docker services**: Starts all infrastructure (PostgreSQL, Authentik, Headscale, GoFlow2)
 6. **Headscale API key**: Auto-generates key and updates `.env.local`
 7. **Database setup**: Runs Prisma migrations and seeds roles/permissions
 8. **Authentik OIDC setup** (automatic via bootstrap token):
@@ -146,7 +146,7 @@ openssl rand -base64 32
 #### Step 3: Start Infrastructure
 
 ```bash
-# Start PostgreSQL, Authentik, Redis, and Headscale
+# Start PostgreSQL, Authentik, and Headscale
 docker compose up -d
 
 # Wait for services to be healthy
@@ -496,6 +496,27 @@ docker exec headscale headscale apikeys create --expiration 365d
 lsof -i :3000 -i :5432 -i :8080 -i :9000
 ```
 
+If you have port conflicts with existing services, all ports are configurable via environment variables. Add these to your `.env.local`:
+
+| Service           | Default Port | Environment Variable     |
+| ----------------- | ------------ | ------------------------ |
+| TailDeck App      | 3000         | `TAILDECK_PORT`          |
+| Authentik HTTP    | 9000         | `AUTHENTIK_HTTP_PORT`    |
+| Authentik HTTPS   | 9443         | `AUTHENTIK_HTTPS_PORT`   |
+| Headscale API     | 8080         | `HEADSCALE_API_PORT`     |
+| Headscale Metrics | 9090         | `HEADSCALE_METRICS_PORT` |
+| NetFlow (UDP)     | 2055         | `NETFLOW_PORT`           |
+| sFlow (UDP)       | 6343         | `SFLOW_PORT`             |
+| IPFIX (UDP)       | 4739         | `IPFIX_PORT`             |
+
+Example: To move Authentik to port 9001:
+
+```bash
+AUTHENTIK_HTTP_PORT=9001
+```
+
+**Note:** PostgreSQL (5432) is exposed for development convenience. For production, consider not exposing it to the host or using internal Docker networking only.
+
 ### Reset Everything
 
 ```bash
@@ -517,8 +538,8 @@ lsof -i :3000 -i :5432 -i :8080 -i :9000
         │                        │                        │
         ▼                        ▼                        ▼
 ┌─────────────────┐     ┌─────────────────┐     ┌─────────────────┐
-│   PostgreSQL    │     │    Authentik    │     │      Redis      │
-│   (TailDeck)    │     │   (OIDC/Auth)   │     │   (Authentik)   │
+│   PostgreSQL    │     │    Authentik    │     │     GoFlow2     │
+│   (TailDeck)    │     │   (OIDC/Auth)   │     │  (Flow Collect) │
 └─────────────────┘     └─────────────────┘     └─────────────────┘
 ```
 

@@ -8,16 +8,28 @@ A modern web dashboard for managing [Headscale](https://headscale.net/) - the se
 
 ---
 
-## TL;DR - Quick Install
+## TL;DR - One-Command Install
 
 ```bash
 git clone https://github.com/dustinnh/taildeck.git
 cd taildeck
-./scripts/setup.sh    # Interactive setup wizard
+./scripts/setup.sh    # That's it! Interactive wizard handles everything
 npm run dev           # Start development server
 ```
 
-The setup script handles everything: Docker services, environment config, Authentik OIDC, Headscale API keys, and database setup. Open http://localhost:3000 after setup - the first user to sign in becomes OWNER.
+### What the Setup Script Does Automatically
+
+The setup script provides a **near zero-configuration** installation experience:
+
+- ✅ Checks prerequisites (Docker, Node.js, ports)
+- ✅ Generates secure secrets and API keys
+- ✅ Starts all Docker services (PostgreSQL, Authentik, Headscale, GoFlow2)
+- ✅ Configures Authentik OIDC (OAuth2 provider, application, RBAC groups)
+- ✅ Sets up the database with roles and permissions
+- ✅ Detects port conflicts and offers custom port configuration
+- ✅ Handles both development and production deployments
+
+Just answer a few questions and you're ready to go. First user to sign in becomes OWNER.
 
 **[Full Installation Walkthrough](./INSTALL_WALKTHROUGH.md)** | **[Detailed Setup Guide](./SETUP.md)**
 
@@ -96,7 +108,7 @@ The setup script automates the entire first-time configuration:
    - Generates `AUTHENTIK_BOOTSTRAP_TOKEN` for API automation
 3. **Dependency Installation**: Runs `npm install`
 4. **Headscale Configuration**: Generates `headscale/config.yaml` from template
-5. **Docker Services**: Starts PostgreSQL, Redis, Authentik, Headscale, and GoFlow2
+5. **Docker Services**: Starts PostgreSQL, Authentik, Headscale, and GoFlow2
 6. **Headscale API Key**: Auto-generates API key and updates `.env.local`
 7. **Database Setup**: Runs Prisma migrations and seeds roles/permissions
 8. **Authentik OIDC Setup** (automatic):
@@ -106,6 +118,18 @@ The setup script automates the entire first-time configuration:
    - Updates `AUTH_AUTHENTIK_SECRET` in `.env.local`
 
 After setup completes, just run `npm run dev` and sign in - the first user becomes OWNER.
+
+### Port Configuration
+
+If you have existing services on the default ports (3000, 8080, 9000, etc.), the setup script will ask if you want to customize ports. You can also configure ports manually in `.env.local`:
+
+```bash
+TAILDECK_PORT=3001
+AUTHENTIK_HTTP_PORT=9001
+HEADSCALE_API_PORT=8081
+```
+
+See [SETUP.md](./SETUP.md#port-conflicts) for the full list of configurable ports.
 
 ---
 
@@ -160,7 +184,7 @@ After setup completes, just run `npm run dev` and sign in - the first user becom
 | Backend        | Next.js API Routes, Prisma ORM                     |
 | Authentication | Auth.js v5 with Authentik OIDC                     |
 | Database       | PostgreSQL                                         |
-| Infrastructure | Docker, Headscale, Authentik, Redis, GoFlow2       |
+| Infrastructure | Docker, Headscale, Authentik, GoFlow2              |
 
 ---
 

@@ -218,6 +218,116 @@ prompt_menu() {
     prompt_select "$prompt_text" "$options_str" "$result_var"
 }
 
+# Check if a port is available (not in use)
+# Usage: check_port_available 9000 && echo "available" || echo "in use"
+check_port_available() {
+    local port="$1"
+    # Try lsof first, fall back to ss, then netstat
+    if command -v lsof >/dev/null 2>&1; then
+        ! lsof -i ":$port" >/dev/null 2>&1
+    elif command -v ss >/dev/null 2>&1; then
+        ! ss -tuln | grep -q ":$port "
+    elif command -v netstat >/dev/null 2>&1; then
+        ! netstat -tuln | grep -q ":$port "
+    else
+        # Can't check, assume available
+        return 0
+    fi
+}
+
+# Prompt for a port number with validation
+# Usage: prompt_port "Authentik HTTP port" "9000" AUTHENTIK_HTTP_PORT
+prompt_port() {
+    local prompt_text="$1"
+    local default_value="$2"
+    local result_var="$3"
+
+    local value=""
+    local is_valid=false
+
+    while [ "$is_valid" = false ]; do
+        echo -en "  ${CYAN}${prompt_text}${NC} [${default_value}]: "
+        read -r value
+
+        # Use default if empty
+        if [ -z "$value" ]; then
+            value="$default_value"
+        fi
+
+        # Validate port number
+        if [[ "$value" =~ ^[0-9]+$ ]] && [ "$value" -ge 1 ] && [ "$value" -le 65535 ]; then
+            is_valid=true
+        else
+            log_error "Please enter a valid port number (1-65535)"
+        fi
+    done
+
+    eval "$result_var='$value'"
+}
+
+# Collect custom port configuration
+# Sets port variables and USE_CUSTOM_PORTS flag
+collect_port_config() {
+    echo ""
+    log_info "Checking for port conflicts..."
+    echo ""
+
+    local has_conflicts=false
+
+    # Check each default port
+    if ! check_port_available 3000; then
+        log_warn "Port 3000 is in use (TailDeck)"
+        has_conflicts=true
+    fi
+    if ! check_port_available 9000; then
+        log_warn "Port 9000 is in use (Authentik HTTP)"
+        has_conflicts=true
+    fi
+    if ! check_port_available 9443; then
+        log_warn "Port 9443 is in use (Authentik HTTPS)"
+        has_conflicts=true
+    fi
+    if ! check_port_available 8080; then
+        log_warn "Port 8080 is in use (Headscale API)"
+        has_conflicts=true
+    fi
+    if ! check_port_available 9090; then
+        log_warn "Port 9090 is in use (Headscale Metrics)"
+        has_conflicts=true
+    fi
+
+    if [ "$has_conflicts" = false ]; then
+        log_success "No port conflicts detected"
+    fi
+
+    echo ""
+    echo -e "${CYAN}Configure custom ports:${NC}"
+    echo -e "${DIM}(Press Enter to keep default)${NC}"
+    echo ""
+
+    prompt_port "TailDeck port" "3000" TAILDECK_PORT
+    prompt_port "Authentik HTTP port" "9000" AUTHENTIK_HTTP_PORT
+    prompt_port "Authentik HTTPS port" "9443" AUTHENTIK_HTTPS_PORT
+    prompt_port "Headscale API port" "8080" HEADSCALE_API_PORT
+    prompt_port "Headscale Metrics port" "9090" HEADSCALE_METRICS_PORT
+    prompt_port "NetFlow UDP port" "2055" NETFLOW_PORT
+    prompt_port "sFlow UDP port" "6343" SFLOW_PORT
+    prompt_port "IPFIX UDP port" "4739" IPFIX_PORT
+
+    echo ""
+    log_success "Custom ports configured"
+
+    # Export all port variables
+    export TAILDECK_PORT
+    export AUTHENTIK_HTTP_PORT
+    export AUTHENTIK_HTTPS_PORT
+    export HEADSCALE_API_PORT
+    export HEADSCALE_METRICS_PORT
+    export NETFLOW_PORT
+    export SFLOW_PORT
+    export IPFIX_PORT
+}
+
 # Display configuration summary for confirmation
 config_summary() {
     echo ""
@@ -304,20 +414,50 @@ collect_setup_config() {
         MAGIC_DNS_DOMAIN=""
     fi
 
+    subheader "Port Configuration"
+
+    echo -e "TailDeck uses several ports for its services."
+    echo -e "If you have existing services on these ports, you can customize them."
+    echo ""
+
+    if prompt_confirm "Use default ports? (recommended for most users)" "y"; then
+        USE_CUSTOM_PORTS="false"
+        log_success "Using default ports"
+    else
+        USE_CUSTOM_PORTS="true"
+        collect_port_config
+    fi
+
     subheader "Admin Account"
 
     prompt_email "Admin email address:" "" ADMIN_EMAIL
     prompt_password "Admin password (min 12 chars):" ADMIN_PASSWORD 12
 
     # Display summary
-    config_summary \
-        "Environment" "$TAILDECK_ENV" \
-        "TailDeck URL" "$AUTH_URL" \
-        "Authentik URL" "$AUTHENTIK_PUBLIC_URL" \
-        "Headscale URL" "$HEADSCALE_URL" \
-        "MagicDNS" "$MAGIC_DNS_ENABLED" \
-        "MagicDNS Domain" "${MAGIC_DNS_DOMAIN:-N/A}" \
-        "Admin Email" "$ADMIN_EMAIL"
+    if [ "$USE_CUSTOM_PORTS" = "true" ]; then
+        config_summary \
+            "Environment" "$TAILDECK_ENV" \
+            "TailDeck URL" "$AUTH_URL" \
+            "Authentik URL" "$AUTHENTIK_PUBLIC_URL" \
+            "Headscale URL" "$HEADSCALE_URL" \
+            "MagicDNS" "$MAGIC_DNS_ENABLED" \
+            "MagicDNS Domain" "${MAGIC_DNS_DOMAIN:-N/A}" \
+            "Custom Ports" "Yes" \
+            "  TailDeck" "${TAILDECK_PORT}" \
+            "  Authentik HTTP" "${AUTHENTIK_HTTP_PORT}" \
+            "  Headscale API" "${HEADSCALE_API_PORT}" \
+            "Admin Email" "$ADMIN_EMAIL"
+    else
+        config_summary \
+            "Environment" "$TAILDECK_ENV" \
+            "TailDeck URL" "$AUTH_URL" \
+            "Authentik URL" "$AUTHENTIK_PUBLIC_URL" \
+            "Headscale URL" "$HEADSCALE_URL" \
+            "MagicDNS" "$MAGIC_DNS_ENABLED" \
+            "MagicDNS Domain" "${MAGIC_DNS_DOMAIN:-N/A}" \
+            "Custom Ports" "No (using defaults)" \
+            "Admin Email" "$ADMIN_EMAIL"
+    fi
 
     prompt_confirm "Proceed with this configuration?" "y" || {
         log_warn "Setup cancelled."
@@ -336,4 +476,5 @@ collect_setup_config() {
     export MAGIC_DNS_DOMAIN
     export ADMIN_EMAIL
     export ADMIN_PASSWORD
+    export USE_CUSTOM_PORTS
 }

@@ -84,7 +84,7 @@ export const oauth2ProviderSchema = z.object({
   client_type: z.enum(['confidential', 'public']),
   client_id: z.string(),
   client_secret: z.string().optional(),
-  redirect_uris: z.string(), // String format in Authentik 2024.2.2
+  redirect_uris: z.string(), // String format in Authentik API
   access_token_validity: z.string(),
   refresh_token_validity: z.string(),
   include_claims_in_id_token: z.boolean(),

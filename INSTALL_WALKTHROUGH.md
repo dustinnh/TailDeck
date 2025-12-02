@@ -2,6 +2,8 @@
 
 A complete step-by-step guide to installing TailDeck from scratch. This guide assumes you're starting fresh with no prior configuration.
 
+> **One-Command Install**: For most users, the entire installation is just `./scripts/setup.sh` - the script handles everything automatically!
+
 ---
 
 ## Table of Contents
@@ -42,13 +44,16 @@ npm --version
 
 - **RAM**: 4GB minimum (8GB recommended)
 - **Disk**: 10GB free space
-- **Ports available**: 3000, 5432, 8080, 9000
+- **Ports available**: 3000, 5432, 8080, 9000 (configurable)
 
 Check if ports are in use:
 
 ```bash
 lsof -i :3000 -i :5432 -i :8080 -i :9000
 ```
+
+> **Port Conflicts?** All ports except PostgreSQL (5432) are configurable via environment variables.
+> See `.env.example` or [SETUP.md](./SETUP.md#port-conflicts) for details.
 
 ---
 
@@ -99,11 +104,21 @@ The setup script automates these steps:
 | 2. Environment Configuration    | Creates `.env.local`, generates secrets, configures URLs  |
 | 3. Installing Dependencies      | Runs `npm install`                                        |
 | 4. Headscale Configuration      | Generates `headscale/config.yaml` from template           |
-| 5. Starting Docker Services     | Starts PostgreSQL, Redis, Authentik, Headscale, GoFlow2   |
+| 5. Starting Docker Services     | Starts PostgreSQL, Authentik, Headscale, GoFlow2          |
 | 6. Generating Headscale API Key | Creates API key and updates `.env.local`                  |
 | 7. Database Setup               | Runs Prisma migrations and seeds roles/permissions        |
 | 8. Authentik OIDC Configuration | **Automatically** creates OAuth2 provider and application |
 | 9. Production Build             | (Production mode only) Runs `npm run build`               |
+
+### Interactive Configuration
+
+The setup script asks a few questions to customize your installation:
+
+1. **Environment**: Development or Production
+2. **Domain Configuration**: URLs for TailDeck, Authentik, and Headscale
+3. **MagicDNS**: Enable/disable and configure domain
+4. **Port Configuration**: Use defaults or customize (for servers with existing services)
+5. **Admin Account**: Email and password for initial setup
 
 ### Example Setup Session
 
@@ -137,7 +152,6 @@ This wizard will guide you through the setup process.
 
 [5/9] Starting Docker Services
   ✓ PostgreSQL started
-  ✓ Redis started
   ✓ Authentik started
   ✓ Headscale started
   ✓ GoFlow2 started
@@ -418,13 +432,27 @@ docker exec headscale headscale apikeys create --expiration 365d
 
 ### Port Conflicts
 
+The setup script will ask if you want to use default ports. If you have conflicts:
+
+1. **During setup**: Answer "N" to "Use default ports?" and configure custom ports
+2. **After setup**: Edit `.env.local` and set port variables:
+
 ```bash
-# Find what's using a port
+# Example: Move Authentik to port 9001
+AUTHENTIK_HTTP_PORT=9001
+
+# Example: Move Headscale to port 8081
+HEADSCALE_API_PORT=8081
+```
+
+To check what's using a port:
+
+```bash
 lsof -i :3000
 lsof -i :9000
-
-# Kill the process or change port in docker-compose.yml
 ```
+
+See [SETUP.md](./SETUP.md#port-conflicts) for the full list of configurable ports.
 
 ### Environment Variable Issues
 

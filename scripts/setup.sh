@@ -170,6 +170,27 @@ if [ ! -f ".env.local" ]; then
         sed -i "s|HEADSCALE_URL=.*|HEADSCALE_URL=\"${HEADSCALE_URL}\"|" .env.local
     fi
     log_success "Set HEADSCALE_URL to ${HEADSCALE_URL}"
+
+    # Write custom port configuration if selected
+    if [ "$USE_CUSTOM_PORTS" = "true" ]; then
+        log_info "Writing custom port configuration..."
+
+        # Append port configuration to .env.local
+        {
+            echo ""
+            echo "# Custom Port Configuration"
+            echo "TAILDECK_PORT=\"${TAILDECK_PORT}\""
+            echo "AUTHENTIK_HTTP_PORT=\"${AUTHENTIK_HTTP_PORT}\""
+            echo "AUTHENTIK_HTTPS_PORT=\"${AUTHENTIK_HTTPS_PORT}\""
+            echo "HEADSCALE_API_PORT=\"${HEADSCALE_API_PORT}\""
+            echo "HEADSCALE_METRICS_PORT=\"${HEADSCALE_METRICS_PORT}\""
+            echo "NETFLOW_PORT=\"${NETFLOW_PORT}\""
+            echo "SFLOW_PORT=\"${SFLOW_PORT}\""
+            echo "IPFIX_PORT=\"${IPFIX_PORT}\""
+        } >> .env.local
+
+        log_success "Custom ports configured"
+    fi
 fi
 
 # Generate Authentik bootstrap token if empty or not set
@@ -412,8 +433,13 @@ echo ""
 
 echo -e "${BOLD}Services (internal):${NC}"
 echo "  - PostgreSQL:  localhost:5432"
-echo "  - Authentik:   http://localhost:9000"
-echo "  - Headscale:   http://localhost:8080"
+if [ "$USE_CUSTOM_PORTS" = "true" ]; then
+    echo "  - Authentik:   http://localhost:${AUTHENTIK_HTTP_PORT}"
+    echo "  - Headscale:   http://localhost:${HEADSCALE_API_PORT}"
+else
+    echo "  - Authentik:   http://localhost:9000"
+    echo "  - Headscale:   http://localhost:8080"
+fi
 echo ""
 
 echo -e "${BOLD}Configuration:${NC}"
@@ -447,17 +473,31 @@ if [ "$TAILDECK_ENV" = "production" ]; then
     echo "  - Run 'npm run build' after any .env.local changes"
 else
     # Development next steps
-    echo "  1. Complete Authentik initial setup (if not done):"
-    echo "     http://localhost:9000/if/flow/initial-setup/"
-    echo ""
-    echo "  2. Update AUTH_AUTHENTIK_SECRET in .env.local (if needed)"
-    echo ""
-    echo "  3. Start the development server:"
-    echo ""
-    echo -e "     ${GREEN}npm run dev${NC}"
-    echo ""
-    echo "  4. Open http://localhost:3000"
-    echo "  5. Sign in with Authentik - first user becomes OWNER"
+    if [ "$USE_CUSTOM_PORTS" = "true" ]; then
+        echo "  1. Complete Authentik initial setup (if not done):"
+        echo "     http://localhost:${AUTHENTIK_HTTP_PORT}/if/flow/initial-setup/"
+        echo ""
+        echo "  2. Update AUTH_AUTHENTIK_SECRET in .env.local (if needed)"
+        echo ""
+        echo "  3. Start the development server:"
+        echo ""
+        echo -e "     ${GREEN}npm run dev${NC}"
+        echo ""
+        echo "  4. Open http://localhost:${TAILDECK_PORT}"
+        echo "  5. Sign in with Authentik - first user becomes OWNER"
+    else
+        echo "  1. Complete Authentik initial setup (if not done):"
+        echo "     http://localhost:9000/if/flow/initial-setup/"
+        echo ""
+        echo "  2. Update AUTH_AUTHENTIK_SECRET in .env.local (if needed)"
+        echo ""
+        echo "  3. Start the development server:"
+        echo ""
+        echo -e "     ${GREEN}npm run dev${NC}"
+        echo ""
+        echo "  4. Open http://localhost:3000"
+        echo "  5. Sign in with Authentik - first user becomes OWNER"
+    fi
 fi
 echo ""
 
