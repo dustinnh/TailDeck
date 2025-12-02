@@ -4,6 +4,8 @@
 
 A modern web dashboard for managing [Headscale](https://headscale.net/) - the self-hosted implementation of Tailscale's control server.
 
+**[Website](https://taildeck.org)** | **[Watch the Demo](https://youtu.be/xDxq1LksAJc)**
+
 ---
 
 ## TL;DR - Quick Install
@@ -35,7 +37,8 @@ The setup script handles everything: Docker services, environment config, Authen
 ### Observability
 
 - **Network Topology**: Interactive visualization of your mesh network
-- **Flow Log Explorer**: Query and analyze network flow logs (Loki integration)
+- **Server Logs**: Real-time Headscale container log viewer with filtering
+- **NetFlow Collection**: Network flow data from Tailscale nodes (via GoFlow2)
 - **Health Dashboard**: Real-time service health monitoring
 - **Audit Logging**: Track all changes with comprehensive audit trail
 
@@ -93,7 +96,7 @@ The setup script automates the entire first-time configuration:
    - Generates `AUTHENTIK_BOOTSTRAP_TOKEN` for API automation
 3. **Dependency Installation**: Runs `npm install`
 4. **Headscale Configuration**: Generates `headscale/config.yaml` from template
-5. **Docker Services**: Starts PostgreSQL, Redis, Authentik, Headscale, and Loki
+5. **Docker Services**: Starts PostgreSQL, Redis, Authentik, Headscale, and GoFlow2
 6. **Headscale API Key**: Auto-generates API key and updates `.env.local`
 7. **Database Setup**: Runs Prisma migrations and seeds roles/permissions
 8. **Authentik OIDC Setup** (automatic):
@@ -108,11 +111,12 @@ After setup completes, just run `npm run dev` and sign in - the first user becom
 
 ## Documentation
 
-| Document                                               | Description                              |
-| ------------------------------------------------------ | ---------------------------------------- |
-| **[INSTALL_WALKTHROUGH.md](./INSTALL_WALKTHROUGH.md)** | Step-by-step installation guide          |
-| **[SETUP.md](./SETUP.md)**                             | Detailed configuration reference         |
-| **[CONTRIBUTING.md](./CONTRIBUTING.md)**               | Developer documentation and architecture |
+| Document                                               | Description                                  |
+| ------------------------------------------------------ | -------------------------------------------- |
+| **[INSTALL_WALKTHROUGH.md](./INSTALL_WALKTHROUGH.md)** | Step-by-step installation guide              |
+| **[SETUP.md](./SETUP.md)**                             | Detailed configuration reference             |
+| **[CONTRIBUTING.md](./CONTRIBUTING.md)**               | Developer documentation and architecture     |
+| **[docs/NETFLOW_SETUP.md](./docs/NETFLOW_SETUP.md)**   | NetFlow collection setup for Tailscale nodes |
 
 ---
 
@@ -156,7 +160,7 @@ After setup completes, just run `npm run dev` and sign in - the first user becom
 | Backend        | Next.js API Routes, Prisma ORM                     |
 | Authentication | Auth.js v5 with Authentik OIDC                     |
 | Database       | PostgreSQL                                         |
-| Infrastructure | Docker, Headscale, Authentik, Redis                |
+| Infrastructure | Docker, Headscale, Authentik, Redis, GoFlow2       |
 
 ---
 
