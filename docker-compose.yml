@@ -159,39 +159,20 @@ services:
     restart: unless-stopped
 
   # ===========================================
-  # Loki (Log Aggregation for Flow Logs)
-  # API at: http://localhost:3100
+  # GoFlow2 (NetFlow/sFlow Collector)
+  # Receives NetFlow data from softflowd on Tailscale nodes
+  # UDP ports: 2055 (NetFlow), 6343 (sFlow), 4739 (IPFIX)
   # ===========================================
-  loki:
-    image: grafana/loki:2.9.4
-    container_name: taildeck-loki
-    command: -config.file=/etc/loki/local-config.yaml
+  goflow:
+    image: netsampler/goflow2:latest
+    container_name: taildeck-goflow
     ports:
-      - "3100:3100"
+      - "2055:2055/udp"
+      - "6343:6343/udp"
+      - "4739:4739/udp"
     volumes:
-      - ./loki/loki-config.yaml:/etc/loki/local-config.yaml:ro
-      - loki_data:/loki
-    healthcheck:
-      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:3100/ready || exit 1"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-    restart: unless-stopped
-
-  # ===========================================
-  # Promtail (Log Collector for Loki)
-  # Collects logs and ships to Loki
-  # ===========================================
-  promtail:
-    image: grafana/promtail:2.9.4
-    container_name: taildeck-promtail
-    volumes:
-      - ./loki/promtail-config.yaml:/etc/promtail/config.yml:ro
-      - /var/log:/var/log:ro
-    command: -config.file=/etc/promtail/config.yml
-    depends_on:
-      loki:
-        condition: service_healthy
+      - goflow_data:/flows
+    command: ["-transport.file", "/flows/flows.json", "-format", "json"]
     restart: unless-stopped
 
   # ===========================================
@@ -215,14 +196,14 @@ services:
       DATABASE_URL: "postgresql://taildeck:taildeck_dev@postgres:5432/taildeck"
       HEADSCALE_URL: "http://headscale:8080"
       HEADSCALE_METRICS_URL: "http://headscale:9090/metrics"
-      LOKI_URL: "http://loki:3100"
       AUTH_TRUST_HOST: "true"
+    volumes:
+      - goflow_data:/flows:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
     depends_on:
       postgres:
         condition: service_healthy
       headscale:
-        condition: service_healthy
-      loki:
         condition: service_healthy
     healthcheck:
       test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/api/health"]
@@ -239,4 +220,4 @@ volumes:
   authentik_media:
   authentik_templates:
   headscale_data:
-  loki_data:
+  goflow_data:

@@ -3,7 +3,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { useSession } from 'next-auth/react';
 import { QRCodeSVG } from 'qrcode.react';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
@@ -95,7 +95,7 @@ export function AddDeviceClient() {
   const canCreate = hasMinRole(userRoles, 'OPERATOR');
 
   const [step, setStep] = useState<'configure' | 'result'>('configure');
-  const [selectedUser, setSelectedUser] = useState<string>('');
+  const [selectedUserId, setSelectedUserId] = useState<string>('');
   const [reusable, setReusable] = useState(false);
   const [ephemeral, setEphemeral] = useState(false);
   const [expirationDays, setExpirationDays] = useState('7');
@@ -115,21 +115,21 @@ export function AddDeviceClient() {
     enabled: canCreate,
   });
 
-  const users = usersData?.users ?? [];
+  const users = useMemo(() => usersData?.users ?? [], [usersData?.users]);
 
   // Auto-select Headscale user based on auth user's email prefix
   const userEmail = session?.user?.email;
   useEffect(() => {
-    if (userEmail && users.length > 0 && !selectedUser) {
+    if (userEmail && users.length > 0 && !selectedUserId) {
       const emailPrefix = userEmail.split('@')[0]?.toLowerCase();
       if (emailPrefix) {
         const matchingUser = users.find((u) => u.name.toLowerCase() === emailPrefix);
         if (matchingUser) {
-          setSelectedUser(matchingUser.name);
+          setSelectedUserId(matchingUser.id);
         }
       }
     }
-  }, [userEmail, users, selectedUser]);
+  }, [userEmail, users, selectedUserId]);
 
   if (!canCreate) {
     return (
@@ -163,7 +163,7 @@ export function AddDeviceClient() {
   }
 
   const handleCreate = async () => {
-    if (!selectedUser) return;
+    if (!selectedUserId) return;
 
     setIsCreating(true);
     setError(null);
@@ -181,7 +181,7 @@ export function AddDeviceClient() {
         .map((t) => (t.startsWith('tag:') ? t : `tag:${t}`));
 
       const result = await createKey({
-        user: selectedUser,
+        user: selectedUserId,
         reusable,
         ephemeral,
         expiration: expiration.toISOString(),
@@ -207,7 +207,7 @@ export function AddDeviceClient() {
   const handleReset = () => {
     setStep('configure');
     setCreatedKey(null);
-    setSelectedUser('');
+    setSelectedUserId('');
     setReusable(false);
     setEphemeral(false);
     setExpirationDays('7');
@@ -328,13 +328,13 @@ export function AddDeviceClient() {
         {/* User Selection */}
         <div className="space-y-2">
           <Label htmlFor="user">Headscale User</Label>
-          <Select value={selectedUser} onValueChange={setSelectedUser}>
+          <Select value={selectedUserId} onValueChange={setSelectedUserId}>
             <SelectTrigger id="user">
               <SelectValue placeholder="Select a user" />
             </SelectTrigger>
             <SelectContent>
               {users.map((user) => (
-                <SelectItem key={user.id} value={user.name}>
+                <SelectItem key={user.id} value={user.id}>
                   {user.name}
                 </SelectItem>
               ))}
@@ -403,7 +403,7 @@ export function AddDeviceClient() {
         <Button variant="outline" onClick={handleReset} disabled={isCreating}>
           Reset
         </Button>
-        <Button onClick={handleCreate} disabled={!selectedUser || isCreating}>
+        <Button onClick={handleCreate} disabled={!selectedUserId || isCreating}>
           {isCreating ? 'Creating...' : 'Generate Key'}
         </Button>
       </CardFooter>

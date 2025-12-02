@@ -140,8 +140,8 @@ export function useNodes() {
       const data = await api.listNodes();
       return data.nodes;
     },
-    // Refresh every 60 seconds for real-time status
-    refetchInterval: 60 * 1000,
+    // Refresh every 15 seconds for real-time status
+    refetchInterval: 15 * 1000,
   });
 }
 

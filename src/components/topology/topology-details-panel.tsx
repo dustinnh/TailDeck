@@ -134,7 +134,7 @@ export function TopologyDetailsPanel({ node, onClose, isOpen }: TopologyDetailsP
                 Last seen {formatDistanceToNow(node.lastSeen, { addSuffix: true })}
               </span>
             </div>
-            {node.isExpiringSoon && (
+            {node.isExpiringSoon && node.expiry && (
               <Alert className="border-amber-500/50 bg-amber-500/10">
                 <AlertTriangle className="h-4 w-4 text-amber-500" />
                 <AlertDescription className="text-amber-600 dark:text-amber-400">
@@ -235,7 +235,7 @@ export function TopologyDetailsPanel({ node, onClose, isOpen }: TopologyDetailsP
                 onCopy={copyToClipboard}
               />
               <InfoRow label="Register Method" value={formatRegisterMethod(node.registerMethod)} />
-              <InfoRow label="Expiry" value={format(node.expiry, 'PPpp')} />
+              <InfoRow label="Expiry" value={node.expiry ? format(node.expiry, 'PPpp') : 'Never'} />
             </div>
           </Section>
         </div>

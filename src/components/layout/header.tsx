@@ -30,6 +30,7 @@ const NAV_ITEMS: NavItem[] = [
   { href: '/machines' as Route, label: 'Machines', minRole: 'OPERATOR' },
   { href: '/routes' as Route, label: 'Routes', minRole: 'OPERATOR' },
   { href: '/health' as Route, label: 'Health' },
+  { href: '/logs' as Route, label: 'Logs', minRole: 'OPERATOR' },
   { href: '/devices/add' as Route, label: 'Add Device', minRole: 'OPERATOR' },
   { href: '/dns' as Route, label: 'DNS', minRole: 'ADMIN' },
   { href: '/policies' as Route, label: 'Policies', minRole: 'ADMIN' },

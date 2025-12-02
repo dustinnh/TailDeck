@@ -31,7 +31,7 @@ export interface MachineNodeData extends Record<string, unknown> {
     isExitRoute: boolean;
   }>;
   lastSeen: Date;
-  expiry: Date;
+  expiry: Date | null;
   tags: string[];
   machineKey: string;
   registerMethod: string;

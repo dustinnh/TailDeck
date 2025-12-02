@@ -162,6 +162,14 @@ if [ ! -f ".env.local" ]; then
         sed -i "s|AUTH_AUTHENTIK_ISSUER=.*|AUTH_AUTHENTIK_ISSUER=\"${AUTH_AUTHENTIK_ISSUER}\"|" .env.local
     fi
     log_success "Set AUTH_AUTHENTIK_ISSUER to ${AUTH_AUTHENTIK_ISSUER}"
+
+    # Update HEADSCALE_URL (critical for client connections)
+    if [[ "$OSTYPE" == "darwin"* ]]; then
+        sed -i '' "s|HEADSCALE_URL=.*|HEADSCALE_URL=\"${HEADSCALE_URL}\"|" .env.local
+    else
+        sed -i "s|HEADSCALE_URL=.*|HEADSCALE_URL=\"${HEADSCALE_URL}\"|" .env.local
+    fi
+    log_success "Set HEADSCALE_URL to ${HEADSCALE_URL}"
 fi
 
 # Generate Authentik bootstrap token if empty or not set
@@ -220,8 +228,11 @@ step_next "Headscale Configuration"
 # Generate Headscale config from template BEFORE starting Docker
 # This is critical because Docker will fail if the config file doesn't exist
 if [ -f "headscale/config.yaml.template" ]; then
-    export HEADSCALE_PUBLIC_URL="${HEADSCALE_URL:-http://localhost:8080}"
-    export LOG_LEVEL="info"
+    # Export required variables for config generation
+    export HEADSCALE_URL="${HEADSCALE_URL:-http://localhost:8080}"
+    export MAGIC_DNS_ENABLED="${MAGIC_DNS_ENABLED:-true}"
+    export MAGIC_DNS_DOMAIN="${MAGIC_DNS_DOMAIN:-taildeck.local}"
+    export LOG_LEVEL="${LOG_LEVEL:-info}"
     generate_headscale_config "headscale/config.yaml.template" "headscale/config.yaml"
 else
     log_warn "Headscale config template not found"

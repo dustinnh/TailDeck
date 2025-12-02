@@ -62,13 +62,16 @@ const headscaleNodeRawSchema = z.object({
   name: z.string(),
   user: headscaleUserRawSchema,
   lastSeen: timestampSchema,
-  expiry: timestampSchema,
+  expiry: timestampSchema.nullable(),
   forcedTags: z.array(z.string()),
   validTags: z.array(z.string()),
+  invalidTags: z.array(z.string()).optional(),
   givenName: z.string(),
   online: z.boolean(),
   registerMethod: registerMethodSchema,
   createdAt: timestampSchema.optional(),
+  // preAuthKey is nullable and optional - we use passthrough to avoid circular dependency
+  preAuthKey: z.unknown().nullable().optional(),
   // Route fields added in Headscale 0.27+
   availableRoutes: z.array(z.string()).optional(),
   approvedRoutes: z.array(z.string()).optional(),
@@ -337,7 +340,7 @@ export const getRouteResponseSchema = z
 const headscalePreAuthKeyRawSchema = z.object({
   id: z.string(),
   key: z.string(),
-  user: z.string(),
+  user: headscaleUserRawSchema,
   reusable: z.boolean(),
   ephemeral: z.boolean(),
   used: z.boolean(),
@@ -349,7 +352,7 @@ const headscalePreAuthKeyRawSchema = z.object({
 export const headscalePreAuthKeySchema = headscalePreAuthKeyRawSchema.transform((data) => ({
   id: data.id,
   key: data.key,
-  user: data.user,
+  user: data.user.name,
   reusable: data.reusable,
   ephemeral: data.ephemeral,
   used: data.used,
@@ -369,7 +372,7 @@ export const listPreAuthKeysResponseSchema = z
     preAuthKeys: data.preAuthKeys.map((key) => ({
       id: key.id,
       key: key.key,
-      user: key.user,
+      user: key.user.name,
       reusable: key.reusable,
       ephemeral: key.ephemeral,
       used: key.used,
@@ -390,7 +393,7 @@ export const createPreAuthKeyResponseSchema = z
     preAuthKey: {
       id: data.preAuthKey.id,
       key: data.preAuthKey.key,
-      user: data.preAuthKey.user,
+      user: data.preAuthKey.user.name,
       reusable: data.preAuthKey.reusable,
       ephemeral: data.preAuthKey.ephemeral,
       used: data.preAuthKey.used,

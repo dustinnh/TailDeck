@@ -36,9 +36,10 @@ export interface HeadscaleNode {
   name: string;
   user: HeadscaleUser;
   lastSeen: Timestamp;
-  expiry: Timestamp;
+  expiry: Timestamp | null;
   forcedTags: string[];
   validTags: string[];
+  invalidTags?: string[];
   givenName: string;
   online: boolean;
   registerMethod: RegisterMethod;

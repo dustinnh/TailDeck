@@ -4,6 +4,8 @@ import { auth } from '@/lib/auth';
 import { logger } from '@/lib/logger';
 import { runDiagnostics, checkService } from '@/server/services/diagnostics';
 
+export const dynamic = 'force-dynamic';
+
 /**
  * GET /api/setup/diagnostics
  *

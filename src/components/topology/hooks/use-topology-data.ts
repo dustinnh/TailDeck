@@ -53,10 +53,10 @@ export function useTopologyData(): TopologyData {
       const nodeRoutes = routes.filter((r) => r.node.id === node.id);
       const hasExitNode = nodeRoutes.some(isExitNodeRoute);
       const lastSeenDate = new Date(parseInt(node.lastSeen.seconds) * 1000);
-      const expiryDate = new Date(parseInt(node.expiry.seconds) * 1000);
+      const expiryDate = node.expiry ? new Date(parseInt(node.expiry.seconds) * 1000) : null;
       const now = new Date();
       const sevenDaysFromNow = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
-      const isExpiringSoon = expiryDate < sevenDaysFromNow && expiryDate > now;
+      const isExpiringSoon = expiryDate ? expiryDate < sevenDaysFromNow && expiryDate > now : false;
 
       return {
         id: node.id,

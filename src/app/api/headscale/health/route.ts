@@ -75,7 +75,7 @@ function calculateNodeMetrics(
   nodes: Array<{
     online: boolean;
     lastSeen: { seconds: string; nanos: number };
-    expiry: { seconds: string; nanos: number };
+    expiry: { seconds: string; nanos: number } | null;
   }>,
   now: Date
 ): NodeMetrics {
@@ -91,12 +91,14 @@ function calculateNodeMetrics(
       offline++;
     }
 
-    // Check expiry
-    const expiryDate = parseTimestamp(node.expiry);
-    const daysUntilExpiry = (expiryDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24);
+    // Check expiry (null expiry means node never expires)
+    if (node.expiry) {
+      const expiryDate = parseTimestamp(node.expiry);
+      const daysUntilExpiry = (expiryDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24);
 
-    if (daysUntilExpiry > 0 && daysUntilExpiry <= EXPIRY_WARNING_DAYS) {
-      expiringSoon++;
+      if (daysUntilExpiry > 0 && daysUntilExpiry <= EXPIRY_WARNING_DAYS) {
+        expiringSoon++;
+      }
     }
 
     // Check for stale nodes (marked online but lastSeen > 24 hours ago)
