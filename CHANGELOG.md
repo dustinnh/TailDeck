@@ -9,6 +9,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Configurable Ports**: All service ports are now configurable via environment variables
+  - Setup script asks "Use default ports?" with interactive custom port configuration
+  - Detects port conflicts and shows which ports are in use
+  - Supports: TailDeck, Authentik HTTP/HTTPS, Headscale API/Metrics, NetFlow/sFlow/IPFIX
+  - See SETUP.md for full list of port environment variables
 - **Network Topology Visualization**: Interactive graph showing network relationships
   - Headscale server as central hub node
   - Visual distinction between online/offline nodes
@@ -28,6 +33,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **Authentik 2025.10**: Upgraded from 2024.2.2 to 2025.10
+  - Removed Redis dependency (Authentik 2025.10 uses PostgreSQL for all caching)
+  - Database migrations run automatically on first start
 - **Headscale 0.27 Compatibility**: Updated API integration for latest Headscale version
   - Node status now uses `status` field instead of deprecated `online` field
   - Graceful fallback for API differences between versions
