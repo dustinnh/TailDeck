@@ -25,7 +25,7 @@ For the fastest setup experience:
 
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/taildeck.git
+git clone https://github.com/dustinnh/taildeck.git
 cd taildeck
 
 # Run the interactive setup script
@@ -127,7 +127,7 @@ Modular bash libraries used by the setup scripts:
 #### Step 1: Clone and Install
 
 ```bash
-git clone https://github.com/yourusername/taildeck.git
+git clone https://github.com/dustinnh/taildeck.git
 cd taildeck
 npm install
 ```
@@ -527,6 +527,6 @@ lsof -i :3000 -i :5432 -i :8080 -i :9000
 ## Getting Help
 
 - **Developer Docs**: See [CONTRIBUTING.md](./CONTRIBUTING.md)
-- **Issues**: https://github.com/yourusername/taildeck/issues
+- **Issues**: https://github.com/dustinnh/taildeck/issues
 - **Headscale Docs**: https://headscale.net/
 - **Authentik Docs**: https://goauthentik.io/docs/

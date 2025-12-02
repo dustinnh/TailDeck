@@ -55,7 +55,7 @@ lsof -i :3000 -i :5432 -i :8080 -i :9000
 ## 2. Clone the Repository
 
 ```bash
-git clone https://github.com/dustinwloring1988/taildeck.git
+git clone https://github.com/dustinnh/taildeck.git
 cd taildeck
 ```
 
@@ -441,7 +441,7 @@ npm run build
 ## Getting Help
 
 - **Website**: https://taildeck.org
-- **Issues**: https://github.com/dustinwloring1988/taildeck/issues
+- **Issues**: https://github.com/dustinnh/taildeck/issues
 - **Headscale Docs**: https://headscale.net/
 - **Authentik Docs**: https://goauthentik.io/docs/
 - **Setup Reference**: See [SETUP.md](./SETUP.md) for detailed configuration options

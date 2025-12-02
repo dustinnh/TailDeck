@@ -11,7 +11,7 @@ A modern web dashboard for managing [Headscale](https://headscale.net/) - the se
 ## TL;DR - Quick Install
 
 ```bash
-git clone https://github.com/yourusername/taildeck.git
+git clone https://github.com/dustinnh/taildeck.git
 cd taildeck
 ./scripts/setup.sh    # Interactive setup wizard
 npm run dev           # Start development server

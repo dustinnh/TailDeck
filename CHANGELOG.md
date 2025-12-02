@@ -59,5 +59,5 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Health Check Endpoint**: `/api/health` endpoint for container orchestration
 - **Automated Setup Script**: `scripts/setup.sh` for streamlined first-time setup
 
-[Unreleased]: https://github.com/yourusername/taildeck/compare/v0.1.0...HEAD
-[0.1.0]: https://github.com/yourusername/taildeck/releases/tag/v0.1.0
+[Unreleased]: https://github.com/dustinnh/taildeck/compare/v0.1.0...HEAD
+[0.1.0]: https://github.com/dustinnh/taildeck/releases/tag/v0.1.0
