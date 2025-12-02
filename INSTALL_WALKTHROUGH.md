@@ -9,12 +9,12 @@ A complete step-by-step guide to installing TailDeck from scratch. This guide as
 1. [Prerequisites](#1-prerequisites)
 2. [Clone the Repository](#2-clone-the-repository)
 3. [Run the Setup Script](#3-run-the-setup-script)
-4. [Configure Authentik](#4-configure-authentik)
+4. [Complete Authentik Initial Setup](#4-complete-authentik-initial-setup)
 5. [Start TailDeck](#5-start-taildeck)
-6. [Complete the Web Setup Wizard](#6-complete-the-web-setup-wizard)
-7. [First Login](#7-first-login)
-8. [Next Steps](#8-next-steps)
-9. [Cleanup & Reset](#9-cleanup--reset)
+6. [First Login](#6-first-login)
+7. [Next Steps](#7-next-steps)
+8. [Cleanup & Reset](#8-cleanup--reset)
+9. [Troubleshooting](#9-troubleshooting)
 
 ---
 
@@ -55,7 +55,7 @@ lsof -i :3000 -i :5432 -i :8080 -i :9000
 ## 2. Clone the Repository
 
 ```bash
-git clone https://github.com/yourusername/taildeck.git
+git clone https://github.com/dustinwloring1988/taildeck.git
 cd taildeck
 ```
 
@@ -63,100 +63,148 @@ cd taildeck
 
 ## 3. Run the Setup Script
 
-The interactive setup script handles most of the configuration:
+The interactive setup script handles the entire configuration process:
 
 ```bash
 ./scripts/setup.sh
 ```
 
-### What the Script Does
+### Quick Mode (Development)
 
-1. **Pre-flight Checks**: Verifies Docker, Node.js, and port availability
-2. **Configuration Prompts**: Asks for domain name, Headscale URL, etc.
-3. **Environment Setup**: Creates `.env.local` with your configuration
-4. **Docker Services**: Starts PostgreSQL, Authentik, Redis, and Headscale
-5. **Secrets Generation**: Creates secure `AUTH_SECRET` and other tokens
-6. **Headscale Config**: Generates `headscale/config.yaml` from template
-7. **API Key**: Creates Headscale API key automatically
-8. **Database Setup**: Runs migrations and seeds initial data
+For a fast setup with development defaults:
+
+```bash
+./scripts/setup.sh --quick
+```
+
+### Script Options
+
+```bash
+./scripts/setup.sh [options]
+
+Options:
+  --quick, -q       Quick mode with defaults (development)
+  --skip-authentik  Skip automatic Authentik OIDC configuration
+  --skip-docker     Skip Docker service management
+  --help, -h        Show help message
+```
+
+### What the Script Does (9 Steps)
+
+The setup script automates these steps:
+
+| Step                            | Description                                               |
+| ------------------------------- | --------------------------------------------------------- |
+| 1. Pre-flight Checks            | Verifies Docker, Node.js, and port availability           |
+| 2. Environment Configuration    | Creates `.env.local`, generates secrets, configures URLs  |
+| 3. Installing Dependencies      | Runs `npm install`                                        |
+| 4. Headscale Configuration      | Generates `headscale/config.yaml` from template           |
+| 5. Starting Docker Services     | Starts PostgreSQL, Redis, Authentik, Headscale, GoFlow2   |
+| 6. Generating Headscale API Key | Creates API key and updates `.env.local`                  |
+| 7. Database Setup               | Runs Prisma migrations and seeds roles/permissions        |
+| 8. Authentik OIDC Configuration | **Automatically** creates OAuth2 provider and application |
+| 9. Production Build             | (Production mode only) Runs `npm run build`               |
 
 ### Example Setup Session
 
 ```
 ╔════════════════════════════════════════════════════════════════╗
-║              TailDeck Interactive Setup                        ║
+║              TailDeck Setup                                    ║
 ╚════════════════════════════════════════════════════════════════╝
 
-[1/6] Running pre-flight checks...
+Welcome to TailDeck - the Headscale Admin Dashboard!
+
+This wizard will guide you through the setup process.
+
+[1/9] Pre-flight Checks
   ✓ Docker is installed
   ✓ Docker Compose is installed
   ✓ Node.js is installed (v20.10.0)
   ✓ All required ports are available
 
-[2/6] Collecting configuration...
-
-Enter your domain name (e.g., taildeck.example.com):
-> taildeck.local
-
-Enter the public URL for TailDeck (e.g., https://taildeck.example.com):
-> http://localhost:3000
-
-Enter the public URL for Headscale (e.g., https://headscale.example.com):
-> http://localhost:8080
-
-Enable MagicDNS? (y/n) [y]:
-> y
-
-Enter the MagicDNS base domain [taildeck.local]:
->
-
-[3/6] Creating environment file...
+[2/9] Environment Configuration
   ✓ Generated AUTH_SECRET
-  ✓ Created .env.local
+  ✓ Set AUTH_URL to http://localhost:3000
+  ✓ Set AUTH_AUTHENTIK_ISSUER
+  ✓ Set HEADSCALE_URL
+  ✓ Generated AUTHENTIK_BOOTSTRAP_TOKEN
 
-[4/6] Starting Docker services...
+[3/9] Installing Dependencies
+  ✓ Dependencies installed
+
+[4/9] Headscale Configuration
+  ✓ Generated headscale/config.yaml
+
+[5/9] Starting Docker Services
   ✓ PostgreSQL started
   ✓ Redis started
-  ✓ Headscale started
   ✓ Authentik started
+  ✓ Headscale started
+  ✓ GoFlow2 started
 
-[5/6] Generating Headscale API key...
+[6/9] Generating Headscale API Key
   ✓ API key generated and saved to .env.local
+  ✓ Created default Headscale user
 
-[6/6] Setting up database...
+[7/9] Database Setup
   ✓ Prisma client generated
   ✓ Database schema pushed
   ✓ Initial data seeded
+
+[8/9] Authentik OIDC Configuration
+  ✓ Created OAuth2 provider
+  ✓ Created TailDeck application
+  ✓ Created RBAC groups
+  ✓ Updated AUTH_AUTHENTIK_SECRET
 
 ╔════════════════════════════════════════════════════════════════╗
 ║              Setup Complete!                                   ║
 ╚════════════════════════════════════════════════════════════════╝
 
-Next steps:
-1. Configure Authentik at http://localhost:9000
-2. Run: npm run dev
-3. Open http://localhost:3000
+TailDeck is ready!
+
+Services (internal):
+  - PostgreSQL:  localhost:5432
+  - Authentik:   http://localhost:9000
+  - Headscale:   http://localhost:8080
+
+Next Steps:
+  1. Complete Authentik initial setup:
+     http://localhost:9000/if/flow/initial-setup/
+
+  2. Start the development server:
+
+     npm run dev
+
+  3. Open http://localhost:3000
+  4. Sign in with Authentik - first user becomes OWNER
 ```
 
 ---
 
-## 4. Configure Authentik
+## 4. Complete Authentik Initial Setup
 
-After the setup script completes, you need to configure Authentik for OIDC authentication.
-
-### 4.1 Initial Authentik Setup
+After the setup script completes, you need to create your Authentik admin account:
 
 1. Open http://localhost:9000/if/flow/initial-setup/
 2. Create your admin account (save these credentials!)
 3. Complete the initial setup wizard
 
-### 4.2 Create OAuth2 Provider
+**Note**: The setup script has already configured the OAuth2 provider and TailDeck application automatically. You do **not** need to create these manually.
+
+### Manual Authentik Configuration (Only if --skip-authentik was used)
+
+If you ran the setup script with `--skip-authentik`, you'll need to configure Authentik manually:
+
+<details>
+<summary>Click to expand manual configuration steps</summary>
+
+#### Create OAuth2 Provider
 
 1. Go to **Admin Interface**: http://localhost:9000/admin/
 2. Navigate to **Applications** → **Providers**
-3. Click **Create**
-4. Select **OAuth2/OpenID Provider**
-5. Configure with these settings:
+3. Click **Create** → **OAuth2/OpenID Provider**
+4. Configure:
 
 | Setting            | Value                                               |
 | ------------------ | --------------------------------------------------- |
@@ -168,10 +216,10 @@ After the setup script completes, you need to configure Authentik for OIDC authe
 | Redirect URIs      | `http://localhost:3000/api/auth/callback/authentik` |
 | Signing Key        | `authentik Self-signed Certificate`                 |
 
-6. Under **Advanced protocol settings**, ensure scopes include: `openid`, `profile`, `email`
-7. Click **Create**
+5. Under **Advanced protocol settings**, ensure scopes include: `openid`, `profile`, `email`
+6. Click **Create**
 
-### 4.3 Create Application
+#### Create Application
 
 1. Navigate to **Applications** → **Applications**
 2. Click **Create**
@@ -185,30 +233,23 @@ After the setup script completes, you need to configure Authentik for OIDC authe
 
 4. Click **Create**
 
-### 4.4 Update Environment
+#### Update Environment
 
 Add the client secret to your `.env.local`:
 
 ```bash
-# Open your .env.local and update this line:
 AUTH_AUTHENTIK_SECRET="paste-the-client-secret-here"
 ```
 
-Or use sed:
-
-```bash
-sed -i 's/your-authentik-client-secret/PASTE_YOUR_SECRET/' .env.local
-```
+</details>
 
 ---
 
 ## 5. Start TailDeck
 
-```bash
-# Install dependencies (if not done already)
-npm install
+### Development Mode
 
-# Start the development server
+```bash
 npm run dev
 ```
 
@@ -225,56 +266,38 @@ You should see:
  ✓ Ready in 2.3s
 ```
 
+### Production Mode
+
+If you selected production mode during setup:
+
+```bash
+npm run build
+npm start
+```
+
 ---
 
-## 6. Complete the Web Setup Wizard
+## 6. First Login
 
-1. Open http://localhost:3000 in your browser
+1. Open http://localhost:3000 (or your production URL)
 2. You'll be redirected to Authentik to sign in
-3. After signing in, navigate to `/setup` or look for the setup prompt on the dashboard
+3. Use the admin account you created in step 4
 
-The web wizard walks you through:
+**Important**: The **first user to sign in** automatically becomes **OWNER** with full system access.
 
-1. **Welcome**: Verifies all services are healthy
-   - Database connection ✓
-   - Headscale API ✓
-   - OIDC provider ✓
+### Role Hierarchy
 
-2. **Domain Configuration**: Review your domain settings
-
-3. **DNS & MagicDNS**: Configure DNS settings
-   - MagicDNS base domain
-   - DNS over HTTPS settings
-
-4. **Security Review**: Address any warnings
-   - HTTP vs HTTPS warnings
-   - Weak secrets detection
-   - Missing configuration alerts
-
-5. **Complete Setup**: Finalize the installation
+| Role     | Permissions                                      |
+| -------- | ------------------------------------------------ |
+| OWNER    | Full access, API key management, system settings |
+| ADMIN    | Settings, policies, DNS, user management         |
+| OPERATOR | Machine management, routes, tags                 |
+| AUDITOR  | Read-only access to audit logs                   |
+| USER     | View own devices only (user portal)              |
 
 ---
 
-## 7. First Login
-
-After completing the setup wizard:
-
-1. The **first user to sign in** automatically becomes **OWNER**
-2. OWNER has full system access and can:
-   - Manage all machines and routes
-   - Configure ACL policies
-   - Manage API keys
-   - Assign roles to other users
-
-### Creating Additional Users
-
-1. Have new users sign in through Authentik
-2. Go to **Settings** in TailDeck
-3. Assign appropriate roles (ADMIN, OPERATOR, AUDITOR, USER)
-
----
-
-## 8. Next Steps
+## 7. Next Steps
 
 ### Add Your First Machine
 
@@ -288,20 +311,34 @@ After completing the setup wizard:
 2. Edit the default policy or create custom rules
 3. Control which devices can communicate
 
-### Enable Flow Logs (Optional)
+### Enable NetFlow Collection (Optional)
 
-For network flow visibility, configure Loki:
+For network flow visibility, install softflowd on your Tailscale nodes:
 
-1. Add Loki configuration to `.env.local`:
-   ```env
-   LOKI_URL="http://localhost:3100"
-   ```
-2. Deploy Loki container
-3. Access **Flow Logs** in TailDeck
+```bash
+# On each Tailscale node you want to monitor
+sudo apt install softflowd
+sudo softflowd -i tailscale0 -n YOUR_TAILDECK_SERVER:2055 -v 9
+```
+
+See **[docs/NETFLOW_SETUP.md](./docs/NETFLOW_SETUP.md)** for detailed instructions.
+
+### Production Deployment
+
+For production deployments with HTTPS:
+
+1. Set up a reverse proxy (Caddy, nginx)
+2. Update `.env.local` with external URLs:
+   - `AUTH_URL` - Your TailDeck URL (e.g., `https://taildeck.example.com`)
+   - `AUTH_AUTHENTIK_ISSUER` - Your Authentik URL (e.g., `https://auth.example.com/application/o/taildeck/`)
+   - `HEADSCALE_URL` - Your Headscale URL (e.g., `https://headscale.example.com`)
+3. Rebuild: `npm run build`
+
+See **[SETUP.md](./SETUP.md)** for detailed production configuration.
 
 ---
 
-## 9. Cleanup & Reset
+## 8. Cleanup & Reset
 
 To start completely fresh (removes all data):
 
@@ -321,7 +358,7 @@ Then run `./scripts/setup.sh` again for a fresh installation.
 
 ---
 
-## Troubleshooting
+## 9. Troubleshooting
 
 ### Docker Services Won't Start
 
@@ -330,7 +367,7 @@ Then run `./scripts/setup.sh` again for a fresh installation.
 docker compose ps
 
 # View logs
-docker compose logs -f authentik
+docker compose logs -f authentik-server
 docker compose logs -f headscale
 docker compose logs -f postgres
 ```
@@ -361,11 +398,19 @@ docker exec taildeck-postgres pg_isready -U taildeck
 
 3. **Verify client secret** is correct in `.env.local`
 
+4. **Re-run auto-configuration** if needed:
+   ```bash
+   AUTHENTIK_URL="http://localhost:9000" npx tsx scripts/setup-authentik.ts
+   ```
+
 ### Headscale Connection Errors
 
 ```bash
 # Check Headscale is running
 docker compose ps headscale
+
+# View Headscale logs
+docker compose logs -f headscale
 
 # Regenerate API key if needed
 docker exec headscale headscale apikeys create --expiration 365d
@@ -381,11 +426,22 @@ lsof -i :9000
 # Kill the process or change port in docker-compose.yml
 ```
 
+### Environment Variable Issues
+
+If builds use wrong URLs after changing `.env.local`:
+
+```bash
+# Clear Next.js cache and rebuild
+rm -rf .next
+npm run build
+```
+
 ---
 
 ## Getting Help
 
-- **Issues**: https://github.com/yourusername/taildeck/issues
+- **Website**: https://taildeck.org
+- **Issues**: https://github.com/dustinwloring1988/taildeck/issues
 - **Headscale Docs**: https://headscale.net/
 - **Authentik Docs**: https://goauthentik.io/docs/
 - **Setup Reference**: See [SETUP.md](./SETUP.md) for detailed configuration options
