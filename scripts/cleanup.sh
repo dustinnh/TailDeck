@@ -58,7 +58,7 @@ fi
 
 # Double-check volumes are removed
 echo -e "${BLUE}[3/5]${NC} Removing Docker volumes..."
-for vol in taildeck_postgres_data taildeck_authentik_postgres_data taildeck_redis_data taildeck_headscale_data taildeck_authentik_media taildeck_authentik_templates; do
+for vol in taildeck_postgres_data taildeck_authentik_postgres_data taildeck_headscale_data taildeck_authentik_media taildeck_authentik_templates; do
     if docker volume ls -q | grep -q "^${vol}$"; then
         docker volume rm "$vol" 2>/dev/null || true
         echo -e "${GREEN}  ✓ Removed volume: $vol${NC}"

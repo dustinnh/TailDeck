@@ -166,7 +166,6 @@ wait_for_all_services() {
 
     wait_for_service "postgres" 60 || ((errors++))
     wait_for_service "authentik-postgres" 60 || ((errors++))
-    wait_for_service "redis" 30 || ((errors++))
 
     # Authentik takes longer to initialize
     log_info "Waiting for Authentik to initialize (this may take 1-2 minutes)..."
