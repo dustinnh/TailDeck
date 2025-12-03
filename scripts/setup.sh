@@ -215,6 +215,25 @@ if [ -z "$CURRENT_TOKEN" ]; then
     fi
     log_success "Generated AUTHENTIK_BOOTSTRAP_TOKEN"
     export AUTHENTIK_BOOTSTRAP_TOKEN
+
+    # CRITICAL: If we generated a new token but Authentik's database already exists,
+    # we must remove it. The bootstrap token is only read during initial DB setup.
+    # Docker Compose lowercases the project name for volume naming.
+    PROJECT_NAME_LOWER=$(basename "$(pwd)" | tr '[:upper:]' '[:lower:]')
+    AUTHENTIK_DB_VOLUME="${PROJECT_NAME_LOWER}_authentik_postgres_data"
+
+    if docker volume ls -q | grep -q "^${AUTHENTIK_DB_VOLUME}$"; then
+        log_warn "New token generated but Authentik database exists"
+        log_info "Removing Authentik database to apply new token..."
+
+        # Stop Authentik containers first if running
+        docker compose stop authentik-server authentik-worker 2>/dev/null || true
+        docker compose rm -f authentik-server authentik-worker 2>/dev/null || true
+
+        # Remove the database volume
+        docker volume rm "$AUTHENTIK_DB_VOLUME" 2>/dev/null || true
+        log_success "Authentik database removed - will reinitialize with new token"
+    fi
 else
     AUTHENTIK_BOOTSTRAP_TOKEN="$CURRENT_TOKEN"
     log_info "Using existing AUTHENTIK_BOOTSTRAP_TOKEN"
@@ -251,6 +270,12 @@ step_next "Headscale Configuration"
 # Generate Headscale config from template BEFORE starting Docker
 # This is critical because Docker will fail if the config file doesn't exist
 if [ -f "headscale/config.yaml.template" ]; then
+    # Safety check: remove config.yaml if it's accidentally a directory
+    if [ -d "headscale/config.yaml" ]; then
+        log_warn "headscale/config.yaml is a directory - removing it"
+        rm -rf "headscale/config.yaml"
+    fi
+
     # Export required variables for config generation
     export HEADSCALE_URL="${HEADSCALE_URL:-http://localhost:8080}"
     export MAGIC_DNS_ENABLED="${MAGIC_DNS_ENABLED:-true}"
@@ -271,16 +296,6 @@ if [ "$SKIP_DOCKER" = true ]; then
     log_info "Skipping Docker services (--skip-docker)"
 else
     docker_up
-
-    # If we generated a new Authentik token and containers were already running,
-    # we need to restart Authentik to pick up the new token
-    if [ "$AUTHENTIK_TOKEN_GENERATED" = true ]; then
-        # Check if Authentik containers exist (might have been running before)
-        if docker ps -a --format '{{.Names}}' | grep -q "authentik-server"; then
-            log_info "New Authentik token generated - restarting Authentik to apply..."
-            docker compose --env-file .env.local up -d --force-recreate authentik-server authentik-worker
-        fi
-    fi
 
     # Wait for all services
     wait_for_all_services

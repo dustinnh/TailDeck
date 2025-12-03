@@ -16,7 +16,7 @@ import { logger } from '@/lib/logger';
 
 import {
   flowListResponseSchema,
-  scopeMappingListResponseSchema,
+  propertyMappingListResponseSchema,
   oauth2ProviderListResponseSchema,
   oauth2ProviderCreateResponseSchema,
   applicationListResponseSchema,
@@ -279,20 +279,46 @@ class AuthentikClient {
     return false;
   }
 
+  /**
+   * Get the default invalidation flow (required for OAuth2 providers in Authentik 2025.10+)
+   */
+  async getInvalidationFlow(): Promise<Flow | null> {
+    const flows = await this.listFlows('invalidation');
+    return (
+      flows.find((f) => f.slug === 'default-provider-invalidation-flow') ||
+      flows.find((f) => f.slug === 'default-invalidation-flow') ||
+      flows[0] ||
+      null
+    );
+  }
+
   // ============================================
   // Scope Mapping Operations
   // ============================================
 
   /**
-   * List all scope mappings
+   * List all property mappings (Authentik 2025.10+ API)
+   * Filters for OAuth2 scope mappings by meta_model_name
    */
   async listScopeMappings(): Promise<ScopeMapping[]> {
     const response = await this.request(
-      '/propertymappings/scope/',
+      '/propertymappings/all/',
       {},
-      scopeMappingListResponseSchema
+      propertyMappingListResponseSchema
     );
-    return response.results;
+
+    // Filter for OAuth2 scope mappings and transform to expected format
+    return response.results
+      .filter((m) => m.meta_model_name === 'authentik_providers_oauth2.scopemapping')
+      .map((m) => ({
+        pk: m.pk,
+        managed: m.managed,
+        name: m.name,
+        expression: m.expression,
+        // Extract scope name from managed field (e.g., "goauthentik.io/providers/oauth2/scope-openid" -> "openid")
+        scope_name: m.managed?.split('scope-')[1] || m.name,
+        description: m.verbose_name,
+      }));
   }
 
   /**
@@ -300,10 +326,18 @@ class AuthentikClient {
    */
   async getOIDCScopeMappings(): Promise<string[]> {
     const mappings = await this.listScopeMappings();
-    const requiredScopes = ['openid', 'profile', 'email', 'groups'];
+    const requiredScopes = ['openid', 'profile', 'email'];
 
+    // Match by scope_name derived from managed field or by name containing the scope
     return mappings
-      .filter((m) => requiredScopes.some((s) => m.scope_name === s || m.scope_name.endsWith(s)))
+      .filter((m) =>
+        requiredScopes.some(
+          (s) =>
+            m.scope_name === s ||
+            m.scope_name?.endsWith(s) ||
+            m.name.toLowerCase().includes(`'${s}'`)
+        )
+      )
       .map((m) => m.pk);
   }
 
@@ -442,29 +476,39 @@ class AuthentikClient {
     try {
       // 1. Get authorization flow
       logger.info('Getting authorization flow...');
-      const flow = await this.getAuthorizationFlow();
-      if (!flow) {
+      const authFlow = await this.getAuthorizationFlow();
+      if (!authFlow) {
         throw new Error('No authorization flow found');
       }
 
-      // 2. Get scope mappings
+      // 2. Get invalidation flow (required in Authentik 2025.10+)
+      logger.info('Getting invalidation flow...');
+      const invalidationFlow = await this.getInvalidationFlow();
+      if (!invalidationFlow) {
+        throw new Error('No invalidation flow found');
+      }
+
+      // 3. Get scope mappings
       logger.info('Getting scope mappings...');
       const scopeMappings = await this.getOIDCScopeMappings();
       if (scopeMappings.length === 0) {
         throw new Error('No scope mappings found');
       }
 
-      // 3. Check for existing provider and create/update as needed
+      // 4. Check for existing provider and create/update as needed
       // Always generate a new secret so we can save it to .env.local
       const clientSecret = this.generateClientSecret();
       let provider = await this.getOAuth2ProviderByName('TailDeck OAuth2');
+
+      // Authentik 2025.10+ requires redirect_uris as an array of objects
+      const redirectUrisArray = [{ matching_mode: 'strict' as const, url: redirectUri }];
 
       if (provider) {
         // Update existing provider with new secret
         logger.info('Updating existing OAuth2 provider with new secret...');
         provider = await this.updateOAuth2Provider(provider.pk, {
           client_secret: clientSecret,
-          redirect_uris: redirectUri,
+          redirect_uris: redirectUrisArray,
           property_mappings: scopeMappings,
         });
       } else {
@@ -472,11 +516,12 @@ class AuthentikClient {
         logger.info('Creating OAuth2 provider...');
         provider = await this.createOAuth2Provider({
           name: 'TailDeck OAuth2',
-          authorization_flow: flow.pk,
+          authorization_flow: authFlow.pk,
+          invalidation_flow: invalidationFlow.pk,
           client_type: 'confidential',
           client_id: clientId,
           client_secret: clientSecret,
-          redirect_uris: redirectUri,
+          redirect_uris: redirectUrisArray,
           access_token_validity: 'minutes=10',
           refresh_token_validity: 'days=30',
           include_claims_in_id_token: true,

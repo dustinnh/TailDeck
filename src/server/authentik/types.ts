@@ -64,10 +64,11 @@ export interface OAuth2Provider {
   pk: number;
   name: string;
   authorization_flow: string;
+  invalidation_flow?: string; // Required in Authentik 2025.10+
   client_type: 'confidential' | 'public';
   client_id: string;
   client_secret?: string;
-  redirect_uris: string; // String format in Authentik API
+  redirect_uris: RedirectURI[]; // Array of redirect URI objects in Authentik 2025.10+
   access_token_validity: string;
   refresh_token_validity: string;
   include_claims_in_id_token: boolean;
@@ -86,10 +87,11 @@ export interface OAuth2Provider {
 export interface OAuth2ProviderCreateRequest {
   name: string;
   authorization_flow: string;
+  invalidation_flow?: string; // Required in Authentik 2025.10+
   client_type: 'confidential' | 'public';
   client_id?: string;
   client_secret?: string;
-  redirect_uris: string; // Newline-separated URIs string for API
+  redirect_uris: RedirectURI[]; // Array of redirect URI objects in Authentik 2025.10+
   access_token_validity?: string;
   refresh_token_validity?: string;
   include_claims_in_id_token?: boolean;

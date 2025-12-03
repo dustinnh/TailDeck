@@ -75,7 +75,8 @@ echo -e "${BLUE}[4/5]${NC} Removing configuration files..."
 rm -f "$PROJECT_DIR/.env" 2>/dev/null && echo -e "${GREEN}  ✓ Removed .env${NC}" || true
 rm -f "$PROJECT_DIR/.env.local" 2>/dev/null && echo -e "${GREEN}  ✓ Removed .env.local${NC}" || true
 rm -rf "$PROJECT_DIR/.next" 2>/dev/null && echo -e "${GREEN}  ✓ Removed .next/${NC}" || true
-rm -f "$PROJECT_DIR/headscale/config.yaml" 2>/dev/null && echo -e "${GREEN}  ✓ Removed headscale/config.yaml${NC}" || true
+# Use -rf in case config.yaml was accidentally created as a directory
+rm -rf "$PROJECT_DIR/headscale/config.yaml" 2>/dev/null && echo -e "${GREEN}  ✓ Removed headscale/config.yaml${NC}" || true
 
 # Verify clean state
 echo -e "${BLUE}[5/5]${NC} Verifying clean state..."

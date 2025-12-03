@@ -51,16 +51,34 @@ export const flowListResponseSchema = z.object({
 });
 
 // ============================================
-// Scope Mapping Schemas
+// Property Mapping Schemas (Authentik 2025.10+)
 // ============================================
 
+// Generic property mapping from /propertymappings/all/ endpoint
+export const propertyMappingSchema = z.object({
+  pk: z.string().uuid(),
+  managed: z.string().nullable(),
+  name: z.string(),
+  expression: z.string(),
+  component: z.string(),
+  verbose_name: z.string(),
+  verbose_name_plural: z.string(),
+  meta_model_name: z.string(),
+});
+
+export const propertyMappingListResponseSchema = z.object({
+  pagination: paginationSchema,
+  results: z.array(propertyMappingSchema),
+});
+
+// Legacy scope mapping schema (kept for backwards compatibility)
 export const scopeMappingSchema = z.object({
   pk: z.string().uuid(),
   managed: z.string().nullable(),
   name: z.string(),
   expression: z.string(),
-  scope_name: z.string(),
-  description: z.string(),
+  scope_name: z.string().optional(),
+  description: z.string().optional(),
 });
 
 export const scopeMappingListResponseSchema = z.object({
@@ -81,10 +99,11 @@ export const oauth2ProviderSchema = z.object({
   pk: z.number(),
   name: z.string(),
   authorization_flow: z.string().uuid(),
+  invalidation_flow: z.string().uuid().optional(), // Required in Authentik 2025.10+
   client_type: z.enum(['confidential', 'public']),
   client_id: z.string(),
   client_secret: z.string().optional(),
-  redirect_uris: z.string(), // String format in Authentik API
+  redirect_uris: z.array(redirectUriSchema), // Array of redirect URI objects in Authentik 2025.10+
   access_token_validity: z.string(),
   refresh_token_validity: z.string(),
   include_claims_in_id_token: z.boolean(),
