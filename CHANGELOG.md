@@ -45,6 +45,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **Authentik Setup Reliability**: Fixed multiple issues with fresh installations
+  - Bootstrap token now written to both `.env` and `.env.local` for Docker Compose compatibility
+  - Setup script waits up to 2 minutes for Authentik blueprints to initialize
+  - Added `waitForApiReady()` and `waitForScopeMappingsReady()` with proper timeout handling
+  - Prevents "Token invalid/expired" errors on first-time setup
+- **Authentik 2025.10 API Compatibility**: Updated OAuth2 provider configuration
+  - Scope mappings endpoint changed to `/propertymappings/all/` with filtering
+  - `redirect_uris` now uses array of `{matching_mode, url}` objects
+  - Added required `invalidation_flow` to provider creation
+- **Production OAuth Configuration**: AUTH_AUTHENTIK_ISSUER properly configured for production
+  - Setup script prompts for Authentik public URL
+  - Automatically runs `npm run build` for production deployments
+  - Fixes OAuth login issues with incorrect localhost issuer URLs
+- **TypeScript Build**: Fixed unused parameter warning in `setup-authentik.ts`
 - API keys page error when `lastSeen` is null (schema validation)
 - DNS page error handling for unsupported Headscale versions
 - Node online status detection for Headscale 0.27+
