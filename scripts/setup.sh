@@ -216,6 +216,23 @@ if [ -z "$CURRENT_TOKEN" ]; then
     log_success "Generated AUTHENTIK_BOOTSTRAP_TOKEN"
     export AUTHENTIK_BOOTSTRAP_TOKEN
 
+    # Also update .env for Docker Compose variable substitution
+    # Docker Compose reads ${VAR} from .env file, not .env.local
+    # The env_file directive only makes vars available INSIDE containers
+    if [ ! -f .env ]; then
+        touch .env
+    fi
+
+    if grep -q "^AUTHENTIK_BOOTSTRAP_TOKEN=" .env 2>/dev/null; then
+        if [[ "$OSTYPE" == "darwin"* ]]; then
+            sed -i '' "s|^AUTHENTIK_BOOTSTRAP_TOKEN=.*|AUTHENTIK_BOOTSTRAP_TOKEN=\"${AUTHENTIK_BOOTSTRAP_TOKEN}\"|" .env
+        else
+            sed -i "s|^AUTHENTIK_BOOTSTRAP_TOKEN=.*|AUTHENTIK_BOOTSTRAP_TOKEN=\"${AUTHENTIK_BOOTSTRAP_TOKEN}\"|" .env
+        fi
+    else
+        echo "AUTHENTIK_BOOTSTRAP_TOKEN=\"${AUTHENTIK_BOOTSTRAP_TOKEN}\"" >> .env
+    fi
+
     # CRITICAL: If we generated a new token but Authentik's database already exists,
     # we must remove it. The bootstrap token is only read during initial DB setup.
     # Docker Compose lowercases the project name for volume naming.
@@ -238,6 +255,21 @@ else
     AUTHENTIK_BOOTSTRAP_TOKEN="$CURRENT_TOKEN"
     log_info "Using existing AUTHENTIK_BOOTSTRAP_TOKEN"
     export AUTHENTIK_BOOTSTRAP_TOKEN
+
+    # Also ensure .env has the token for Docker Compose variable substitution
+    if [ ! -f .env ]; then
+        touch .env
+    fi
+
+    if grep -q "^AUTHENTIK_BOOTSTRAP_TOKEN=" .env 2>/dev/null; then
+        if [[ "$OSTYPE" == "darwin"* ]]; then
+            sed -i '' "s|^AUTHENTIK_BOOTSTRAP_TOKEN=.*|AUTHENTIK_BOOTSTRAP_TOKEN=\"${AUTHENTIK_BOOTSTRAP_TOKEN}\"|" .env
+        else
+            sed -i "s|^AUTHENTIK_BOOTSTRAP_TOKEN=.*|AUTHENTIK_BOOTSTRAP_TOKEN=\"${AUTHENTIK_BOOTSTRAP_TOKEN}\"|" .env
+        fi
+    else
+        echo "AUTHENTIK_BOOTSTRAP_TOKEN=\"${AUTHENTIK_BOOTSTRAP_TOKEN}\"" >> .env
+    fi
 fi
 
 # Source .env.local to get variables
