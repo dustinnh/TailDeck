@@ -106,6 +106,12 @@ export const queryKeys = {
     service: (name: string) => [...queryKeys.setup.all, 'service', name] as const,
     warnings: () => [...queryKeys.setup.all, 'warnings'] as const,
   },
+
+  // Public configuration queries
+  config: {
+    all: ['config'] as const,
+    public: () => [...queryKeys.config.all, 'public'] as const,
+  },
 } as const;
 
 /**

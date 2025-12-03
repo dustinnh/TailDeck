@@ -28,6 +28,20 @@ import {
 import { Switch } from '@/components/ui/switch';
 import { queryKeys } from '@/lib/api/query-keys';
 
+interface PublicConfig {
+  headscaleUrl: string;
+  magicDnsEnabled: boolean;
+  magicDnsDomain?: string;
+}
+
+async function fetchConfig(): Promise<PublicConfig> {
+  const res = await fetch('/api/config');
+  if (!res.ok) {
+    throw new Error('Failed to fetch configuration');
+  }
+  return res.json();
+}
+
 type RoleName = 'OWNER' | 'ADMIN' | 'OPERATOR' | 'AUDITOR' | 'USER';
 
 const ROLE_HIERARCHY: Record<RoleName, number> = {
@@ -106,6 +120,15 @@ export function AddDeviceClient() {
   const [copied, setCopied] = useState(false);
 
   const {
+    data: config,
+    isLoading: loadingConfig,
+    error: configError,
+  } = useQuery({
+    queryKey: queryKeys.config.public(),
+    queryFn: fetchConfig,
+  });
+
+  const {
     data: usersData,
     isLoading: loadingUsers,
     error: usersError,
@@ -142,7 +165,7 @@ export function AddDeviceClient() {
     );
   }
 
-  if (loadingUsers) {
+  if (loadingUsers || loadingConfig) {
     return <AddDeviceSkeleton />;
   }
 
@@ -156,6 +179,22 @@ export function AddDeviceClient() {
         <CardContent>
           <p className="text-sm text-muted-foreground">
             {usersError instanceof Error ? usersError.message : 'Unknown error'}
+          </p>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (configError) {
+    return (
+      <Card className="border-destructive">
+        <CardHeader>
+          <CardTitle className="text-destructive">Configuration Error</CardTitle>
+          <CardDescription>Failed to load server configuration</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <p className="text-sm text-muted-foreground">
+            {configError instanceof Error ? configError.message : 'Unknown error'}
           </p>
         </CardContent>
       </Card>
@@ -215,8 +254,8 @@ export function AddDeviceClient() {
     setError(null);
   };
 
-  // Get headscale URL for the QR code
-  const headscaleUrl = process.env.NEXT_PUBLIC_HEADSCALE_URL || 'https://your-headscale-server';
+  // Get headscale URL from config
+  const headscaleUrl = config?.headscaleUrl || 'http://localhost:8080';
   const loginCommand = createdKey
     ? `tailscale up --login-server ${headscaleUrl} --authkey ${createdKey.key}`
     : '';
