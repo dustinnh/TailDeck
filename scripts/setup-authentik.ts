@@ -120,49 +120,85 @@ async function main() {
   // Create client
   const client = createAuthentikClient(authentikUrl, token);
 
-  // Check health first
-  logInfo('Checking Authentik API health...');
-  const health = await client.checkHealth();
+  // Wait for Authentik API to be ready
+  // The bootstrap token is created by blueprints, which can take 30-90 seconds
+  // on first startup (especially on lower-end VPS systems)
+  logInfo('Waiting for Authentik API and blueprints to be ready...');
+  logInfo('(This may take up to 2 minutes on first startup)');
+
+  const health = await client.waitForApiReady(60, 2000, (attempt, max, status) => {
+    // Show progress every 5 attempts (10 seconds)
+    if (attempt % 5 === 0) {
+      log(`  ${status}`);
+    }
+  });
 
   if (!health.healthy) {
-    logError(`Authentik API is not healthy: ${health.error}`);
+    logError(`Authentik API is not ready: ${health.error}`);
 
     if (!health.apiReachable) {
       log('\nMake sure Authentik is running:');
       log('  docker compose up -d authentik-server');
       log('  docker compose logs -f authentik-server\n');
+    } else if (health.error?.includes('Token invalid/expired')) {
+      log('\nThe bootstrap token was not accepted. This can happen if:');
+      log('  - The AUTHENTIK_BOOTSTRAP_TOKEN in .env does not match what Authentik has stored');
+      log('  - The Authentik database was initialized with a different token');
+      log('\nTo fix this, you can:');
+      log('  1. Run ./scripts/cleanup.sh to reset everything');
+      log('  2. Run ./scripts/setup.sh again with a fresh setup\n');
     }
 
     process.exit(1);
   }
 
-  logSuccess(`Authentik API is healthy (version: ${health.version || 'unknown'})`);
+  logSuccess(`Authentik API is ready (version: ${health.version || 'unknown'})`);
   log('');
 
-  // Wait for blueprints to initialize (creates default flows)
-  // This can take 30-45 seconds on lower-end VPS systems
-  logInfo('Waiting for Authentik blueprints to initialize...');
-  logInfo('(This may take up to 60 seconds on first startup)');
+  // Wait for flows to be available (blueprints apply them)
+  logInfo('Verifying OAuth2 flows are available...');
 
-  const flowsReady = await client.waitForFlowsReady(30, 2000, (attempt, max) => {
+  const flowsReady = await client.waitForFlowsReady(15, 2000, (attempt, max) => {
     // Show progress every 5 attempts (10 seconds)
     if (attempt % 5 === 0) {
-      log(`  Still waiting... (${attempt}/${max})`);
+      log(`  Still waiting for flows... (${attempt}/${max})`);
     }
   });
 
   if (!flowsReady) {
-    logError('Authentik blueprints did not initialize in time');
-    log('\nThe authorization flow was not found after 60 seconds.');
+    logError('OAuth2 authorization flows not found');
+    log('\nThe authorization flow was not found after waiting.');
     log('This can happen if:');
-    log('  - Authentik is still starting up (try running this script again)');
-    log('  - The database needs more time to initialize');
+    log('  - Authentik blueprints are corrupted');
     log('  - There is a problem with Authentik configuration\n');
-    log('Try running: docker compose logs authentik-server');
+    log('Try running: docker compose logs authentik-worker');
     process.exit(1);
   }
 
-  logSuccess('Authentik blueprints initialized');
+  logSuccess('OAuth2 flows verified');
+  log('');
+
+  // Wait for scope mappings to be available (also created by blueprints)
+  logInfo('Verifying OAuth2 scope mappings are available...');
+
+  const scopesReady = await client.waitForScopeMappingsReady(15, 2000, (attempt, max) => {
+    // Show progress every 5 attempts (10 seconds)
+    if (attempt % 5 === 0) {
+      log(`  Still waiting for scope mappings... (${attempt}/${max})`);
+    }
+  });
+
+  if (!scopesReady) {
+    logError('OAuth2 scope mappings not found');
+    log('\nThe OIDC scope mappings were not found after waiting.');
+    log('This can happen if:');
+    log('  - Authentik blueprints are corrupted');
+    log('  - There is a problem with Authentik configuration\n');
+    log('Try running: docker compose logs authentik-worker');
+    process.exit(1);
+  }
+
+  logSuccess('OAuth2 scope mappings verified');
   log('');
 
   // Run setup

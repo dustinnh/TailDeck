@@ -375,6 +375,12 @@ elif [ -z "$AUTHENTIK_BOOTSTRAP_TOKEN" ]; then
     log_warn "AUTHENTIK_BOOTSTRAP_TOKEN not set - skipping auto-configuration"
 else
     # Set up environment for Authentik script
+    # Re-source .env.local to ensure AUTHENTIK_BOOTSTRAP_TOKEN is exported
+    # (it may have been lost in subshells during previous steps)
+    set -a
+    source .env.local
+    set +a
+
     export AUTHENTIK_URL="http://localhost:9000"
     export AUTH_AUTHENTIK_ID="${AUTH_AUTHENTIK_ID:-taildeck}"
 

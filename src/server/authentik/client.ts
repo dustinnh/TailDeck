@@ -218,6 +218,79 @@ class AuthentikClient {
     }
   }
 
+  /**
+   * Wait for Authentik API to be ready with a valid token.
+   *
+   * The bootstrap token is created by Authentik blueprints, which can take
+   * 30-45 seconds to apply after the HTTP server is ready. This method
+   * retries the health check until the token is accepted.
+   *
+   * @param maxAttempts - Maximum number of attempts (default: 60, ~2 minutes)
+   * @param delayMs - Delay between attempts in milliseconds (default: 2000)
+   * @param onProgress - Optional callback for progress updates
+   * @returns Health status when ready, or error status if timed out
+   */
+  async waitForApiReady(
+    maxAttempts = 60,
+    delayMs = 2000,
+    onProgress?: (attempt: number, maxAttempts: number, status: string) => void
+  ): Promise<AuthentikHealthStatus> {
+    // Track how many attempts we've had where the server is up but token isn't valid
+    // This helps us give more time for blueprint application
+    let tokenWaitAttempts = 0;
+    const maxTokenWaitAttempts = 30; // 60 seconds specifically for token wait
+
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+      const health = await this.checkHealth();
+
+      if (health.healthy) {
+        return health;
+      }
+
+      // If the error is "Token invalid/expired", blueprints haven't applied yet
+      const isTokenError = health.error?.includes('Token invalid/expired');
+
+      // Track server-up-but-token-invalid attempts separately
+      if (isTokenError) {
+        tokenWaitAttempts++;
+      }
+
+      if (onProgress) {
+        const status = isTokenError
+          ? `Waiting for blueprints to apply... (${tokenWaitAttempts}/${maxTokenWaitAttempts})`
+          : health.apiReachable
+            ? `API error: ${health.error}`
+            : 'Waiting for Authentik server...';
+        onProgress(attempt, maxAttempts, status);
+      }
+
+      // If token error has been happening for too long, something is really wrong
+      if (tokenWaitAttempts >= maxTokenWaitAttempts) {
+        return {
+          healthy: false,
+          apiReachable: true,
+          error:
+            'Token invalid/expired - the bootstrap token may not have been created by Authentik blueprints',
+        };
+      }
+
+      // If it's not a token error and the API is reachable, something else is wrong
+      if (!isTokenError && health.apiReachable && !health.error?.includes('503')) {
+        return health;
+      }
+
+      if (attempt < maxAttempts) {
+        await new Promise((resolve) => setTimeout(resolve, delayMs));
+      }
+    }
+
+    return {
+      healthy: false,
+      apiReachable: true,
+      error: 'Timed out waiting for Authentik API to be ready',
+    };
+  }
+
   // ============================================
   // Flow Operations
   // ============================================
@@ -262,6 +335,41 @@ class AuthentikClient {
       try {
         const flow = await this.getAuthorizationFlow();
         if (flow) {
+          return true;
+        }
+      } catch {
+        // Ignore errors during wait - API might not be fully ready
+      }
+
+      if (onProgress) {
+        onProgress(attempt, maxAttempts);
+      }
+
+      if (attempt < maxAttempts) {
+        await new Promise((resolve) => setTimeout(resolve, delayMs));
+      }
+    }
+    return false;
+  }
+
+  /**
+   * Wait for Authentik scope mappings to be available.
+   * Scope mappings are created by blueprints and may not be immediately available.
+   *
+   * @param maxAttempts - Maximum number of attempts (default: 30)
+   * @param delayMs - Delay between attempts in milliseconds (default: 2000)
+   * @param onProgress - Optional callback for progress updates
+   * @returns true if scope mappings are ready, false if timed out
+   */
+  async waitForScopeMappingsReady(
+    maxAttempts = 30,
+    delayMs = 2000,
+    onProgress?: (attempt: number, maxAttempts: number) => void
+  ): Promise<boolean> {
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+      try {
+        const mappings = await this.getOIDCScopeMappings();
+        if (mappings.length > 0) {
           return true;
         }
       } catch {
