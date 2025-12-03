@@ -57,8 +57,12 @@ else
 fi
 
 # Double-check volumes are removed
+# Docker Compose lowercases the project name for volume naming
+# e.g., "TailDeck" folder -> "taildeck_postgres_data" volume
+PROJECT_NAME=$(basename "$PROJECT_DIR" | tr '[:upper:]' '[:lower:]')
 echo -e "${BLUE}[3/5]${NC} Removing Docker volumes..."
-for vol in taildeck_postgres_data taildeck_authentik_postgres_data taildeck_headscale_data taildeck_authentik_media taildeck_authentik_templates; do
+for vol_suffix in postgres_data authentik_postgres_data headscale_data authentik_media authentik_templates goflow_data; do
+    vol="${PROJECT_NAME}_${vol_suffix}"
     if docker volume ls -q | grep -q "^${vol}$"; then
         docker volume rm "$vol" 2>/dev/null || true
         echo -e "${GREEN}  ✓ Removed volume: $vol${NC}"
@@ -78,7 +82,8 @@ echo -e "${BLUE}[5/5]${NC} Verifying clean state..."
 echo ""
 
 containers=$(docker ps -a --filter "name=taildeck" --filter "name=headscale" --filter "name=authentik" -q 2>/dev/null | wc -l)
-volumes=$(docker volume ls -q 2>/dev/null | grep -E "^taildeck_" | wc -l)
+# Check for volumes with lowercase project name (Docker Compose lowercases it)
+volumes=$(docker volume ls -q 2>/dev/null | grep -iE "^${PROJECT_NAME}_" | wc -l)
 
 if [[ "$containers" -eq 0 && "$volumes" -eq 0 ]]; then
     echo -e "${GREEN}╔════════════════════════════════════════════════════════════════╗${NC}"
@@ -92,4 +97,8 @@ else
     echo -e "${YELLOW}Warning: Some resources may still exist:${NC}"
     echo "  Containers: $containers"
     echo "  Volumes: $volumes"
+    echo ""
+    echo "You can manually remove them with:"
+    echo "  docker ps -a --filter 'name=taildeck' --filter 'name=headscale' --filter 'name=authentik' -q | xargs -r docker rm -f"
+    echo "  docker volume ls -q | grep -i '${PROJECT_NAME}_' | xargs -r docker volume rm"
 fi

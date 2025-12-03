@@ -196,9 +196,11 @@ fi
 # Generate Authentik bootstrap token if empty or not set
 # Extract current value (handles both AUTHENTIK_BOOTSTRAP_TOKEN="" and AUTHENTIK_BOOTSTRAP_TOKEN="value")
 CURRENT_TOKEN=$(grep "^AUTHENTIK_BOOTSTRAP_TOKEN=" .env.local 2>/dev/null | sed 's/^AUTHENTIK_BOOTSTRAP_TOKEN="//' | sed 's/"$//')
+AUTHENTIK_TOKEN_GENERATED=false
 
 if [ -z "$CURRENT_TOKEN" ]; then
     AUTHENTIK_BOOTSTRAP_TOKEN=$(openssl rand -hex 32)
+    AUTHENTIK_TOKEN_GENERATED=true
 
     # Update in place if the line exists, otherwise append
     if grep -q "^AUTHENTIK_BOOTSTRAP_TOKEN=" .env.local; then
@@ -269,6 +271,16 @@ if [ "$SKIP_DOCKER" = true ]; then
     log_info "Skipping Docker services (--skip-docker)"
 else
     docker_up
+
+    # If we generated a new Authentik token and containers were already running,
+    # we need to restart Authentik to pick up the new token
+    if [ "$AUTHENTIK_TOKEN_GENERATED" = true ]; then
+        # Check if Authentik containers exist (might have been running before)
+        if docker ps -a --format '{{.Names}}' | grep -q "authentik-server"; then
+            log_info "New Authentik token generated - restarting Authentik to apply..."
+            docker compose --env-file .env.local up -d --force-recreate authentik-server authentik-worker
+        fi
+    fi
 
     # Wait for all services
     wait_for_all_services
