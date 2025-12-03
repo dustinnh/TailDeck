@@ -126,7 +126,7 @@ async function main() {
   logInfo('Waiting for Authentik API and blueprints to be ready...');
   logInfo('(This may take up to 2 minutes on first startup)');
 
-  const health = await client.waitForApiReady(60, 2000, (attempt, max, status) => {
+  const health = await client.waitForApiReady(60, 2000, (attempt, _max, status) => {
     // Show progress every 5 attempts (10 seconds)
     if (attempt % 5 === 0) {
       log(`  ${status}`);
