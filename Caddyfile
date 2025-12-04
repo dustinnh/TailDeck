@@ -1,5 +1,5 @@
 # Authentik OIDC Provider
-{env.AUTHENTIK_DOMAIN} {
+{$AUTHENTIK_DOMAIN} {
     reverse_proxy authentik-server:9000
 
     header {
@@ -10,7 +10,7 @@
 }
 
 # TailDeck Dashboard
-{env.TAILDECK_DOMAIN} {
+{$TAILDECK_DOMAIN} {
     reverse_proxy taildeck:3000
 
     header {
@@ -21,7 +21,7 @@
 }
 
 # Headscale VPN Control Server
-{env.HEADSCALE_DOMAIN} {
+{$HEADSCALE_DOMAIN} {
     reverse_proxy headscale:8080
 
     header {
