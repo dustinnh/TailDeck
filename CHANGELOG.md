@@ -60,7 +60,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Fixes OAuth login issues with incorrect localhost issuer URLs
 - **TypeScript Build**: Fixed unused parameter warning in `setup-authentik.ts`
 - **Headscale ACL Policy**: Fixed ACL Policy page 502 error by configuring default policy file path
-  - Added `headscale/acls.json` with default allow-all policy
+  - Added `headscale/acls.json` with default allow-all ACL policy (SSH section removed - wildcards not supported in Headscale 0.27)
   - Updated `config.yaml.template` to set `policy.path: /etc/headscale/acls.json`
   - Mounted ACL file in docker-compose.yml for Headscale container
 - API keys page error when `lastSeen` is null (schema validation)
