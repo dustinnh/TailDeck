@@ -4,12 +4,50 @@ import NextAuth from 'next-auth';
 import { authConfig } from '@/lib/auth.config';
 
 /**
+ * Get Authentik origin for CSP form-action
+ * Must be computed at runtime (not build time) for Docker deployments
+ */
+function getAuthentikOrigin(): string {
+  const issuer = process.env.AUTH_AUTHENTIK_ISSUER;
+  if (issuer) {
+    try {
+      return new URL(issuer).origin;
+    } catch {
+      // Invalid URL, fall back to default
+    }
+  }
+  return 'http://localhost:9000';
+}
+
+/**
+ * Build CSP header with runtime Authentik origin
+ * This must be in middleware (not next.config.mjs) so it uses
+ * runtime env vars instead of build-time placeholders
+ */
+function buildCspHeader(): string {
+  return `
+    default-src 'self';
+    script-src 'self' 'unsafe-eval' 'unsafe-inline';
+    style-src 'self' 'unsafe-inline';
+    img-src 'self' blob: data: https://authjs.dev;
+    font-src 'self';
+    object-src 'none';
+    base-uri 'self';
+    form-action 'self' ${getAuthentikOrigin()};
+    frame-ancestors 'none';
+  `
+    .replace(/\s{2,}/g, ' ')
+    .trim();
+}
+
+/**
  * Auth.js middleware for route protection
  *
  * This middleware runs on every request and:
  * 1. Checks if the user is authenticated
  * 2. Redirects to signin for protected routes
  * 3. Adds request tracing headers
+ * 4. Sets CSP header with runtime Authentik origin
  *
  * Note: This uses authConfig (not auth) because middleware
  * runs in Edge runtime and cannot use Prisma adapter
@@ -32,9 +70,13 @@ export default auth((req) => {
     );
   }
 
-  // Continue to the page with request ID header
+  // Continue to the page with headers
   const response = NextResponse.next();
   response.headers.set('X-Request-ID', requestId);
+
+  // Set CSP header with runtime Authentik origin
+  response.headers.set('Content-Security-Policy', buildCspHeader());
+
   return response;
 });
 

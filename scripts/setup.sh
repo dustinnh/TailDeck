@@ -561,7 +561,9 @@ echo -e "${BOLD}Next Steps:${NC}"
 if [ "$TAILDECK_ENV" = "production" ]; then
     # Production next steps
     if [ "$START_CADDY" = true ]; then
-        # Caddy is running - show HTTPS URLs
+        # Caddy + TailDeck running in Docker - show HTTPS URLs
+        echo -e "${BOLD}TailDeck is running in Docker!${NC}"
+        echo ""
         echo -e "${BOLD}Caddy Reverse Proxy:${NC}"
         echo "  Caddy is running and will automatically obtain SSL certificates."
         echo ""
@@ -573,16 +575,14 @@ if [ "$TAILDECK_ENV" = "production" ]; then
         echo "  1. Complete Authentik initial setup:"
         echo "     https://${AUTHENTIK_DOMAIN}/if/flow/initial-setup/"
         echo ""
-        echo "  2. Build and start TailDeck for production:"
+        echo "  2. Open https://${TAILDECK_DOMAIN}"
+        echo "  3. Sign in with Authentik - first user becomes OWNER"
         echo ""
-        echo -e "     ${GREEN}npm run build && npm run start${NC}"
-        echo ""
-        echo "  3. Open https://${TAILDECK_DOMAIN}"
-        echo "  4. Sign in with Authentik - first user becomes OWNER"
-        echo ""
-        echo -e "${BOLD}Caddy Commands:${NC}"
-        echo "  - View Caddy logs:  docker compose logs -f caddy"
-        echo "  - Restart Caddy:    docker compose --profile app restart caddy"
+        echo -e "${BOLD}Docker Commands:${NC}"
+        echo "  - View TailDeck logs:  docker compose logs -f taildeck"
+        echo "  - View Caddy logs:     docker compose logs -f caddy"
+        echo "  - Restart all:         docker compose --profile app restart"
+        echo "  - Rebuild after changes: docker compose --profile app up -d --build"
     else
         # Caddy not started - show manual instructions
         echo "  1. Complete Authentik initial setup:"

@@ -3,24 +3,11 @@
  */
 
 /**
- * Get Authentik origin for CSP form-action
- * Extracts origin from AUTH_AUTHENTIK_ISSUER env var
- */
-const getAuthentikOrigin = () => {
-  const issuer = process.env.AUTH_AUTHENTIK_ISSUER;
-  if (issuer) {
-    try {
-      return new URL(issuer).origin;
-    } catch {
-      // Invalid URL, fall back to default
-    }
-  }
-  return 'http://localhost:9000';
-};
-
-/**
  * Security headers applied to all responses
  * These protect against common web vulnerabilities
+ *
+ * Note: CSP is set in middleware (src/middleware.ts) so it can use
+ * runtime env vars for Authentik origin in Docker deployments
  */
 const securityHeaders = [
   // Prevent clickjacking attacks
@@ -50,27 +37,6 @@ const securityHeaders = [
   },
 ];
 
-/**
- * Content Security Policy
- * Controls which resources can be loaded
- *
- * Note: 'unsafe-inline' and 'unsafe-eval' are needed for Next.js development
- * These should be tightened in production with nonces/hashes
- */
-const cspHeader = `
-  default-src 'self';
-  script-src 'self' 'unsafe-eval' 'unsafe-inline';
-  style-src 'self' 'unsafe-inline';
-  img-src 'self' blob: data: https://authjs.dev;
-  font-src 'self';
-  object-src 'none';
-  base-uri 'self';
-  form-action 'self' ${getAuthentikOrigin()};
-  frame-ancestors 'none';
-`
-  .replace(/\s{2,}/g, ' ')
-  .trim();
-
 const nextConfig = {
   // Disable X-Powered-By header (information disclosure)
   poweredByHeader: false,
@@ -82,18 +48,13 @@ const nextConfig = {
   output: 'standalone',
 
   // Apply security headers to all routes
+  // Note: CSP is set in middleware for runtime env var support
   async headers() {
     return [
       {
         // Apply to all routes
         source: '/(.*)',
-        headers: [
-          ...securityHeaders,
-          {
-            key: 'Content-Security-Policy',
-            value: cspHeader,
-          },
-        ],
+        headers: securityHeaders,
       },
     ];
   },
