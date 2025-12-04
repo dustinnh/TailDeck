@@ -8,7 +8,9 @@ import { authConfig } from '@/lib/auth.config';
  * Must be computed at runtime (not build time) for Docker deployments
  */
 function getAuthentikOrigin(): string {
-  const issuer = process.env.AUTH_AUTHENTIK_ISSUER;
+  // Use bracket notation to prevent Next.js from inlining at build time
+  // This ensures the runtime env var is used, not the Dockerfile placeholder
+  const issuer = process.env['AUTH_AUTHENTIK_ISSUER'];
   if (issuer) {
     try {
       return new URL(issuer).origin;

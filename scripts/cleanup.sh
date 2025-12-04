@@ -21,6 +21,12 @@ echo -e "${BLUE}║              TailDeck Cleanup Script                        
 echo -e "${BLUE}╚════════════════════════════════════════════════════════════════╝${NC}"
 echo ""
 
+# Check if Caddy is running
+CADDY_RUNNING=false
+if docker ps --format '{{.Names}}' 2>/dev/null | grep -q "taildeck-caddy"; then
+    CADDY_RUNNING=true
+fi
+
 # Confirmation
 echo -e "${YELLOW}WARNING: This will remove:${NC}"
 echo "  - All TailDeck Docker containers"
@@ -37,6 +43,17 @@ if [[ ! "$confirm" =~ ^[Yy]$ ]]; then
     exit 0
 fi
 
+# Ask about Caddy if it's running
+KEEP_CADDY=false
+if [[ "$CADDY_RUNNING" == "true" ]]; then
+    echo ""
+    read -p "Caddy reverse proxy is running. Keep it? (y/N): " keep_caddy
+    if [[ "$keep_caddy" =~ ^[Yy]$ ]]; then
+        KEEP_CADDY=true
+        echo -e "${BLUE}  ℹ Caddy will be preserved${NC}"
+    fi
+fi
+
 echo ""
 
 # Kill any running Node processes
@@ -49,11 +66,34 @@ echo -e "${GREEN}  ✓ Node processes stopped${NC}"
 # Stop and remove Docker containers, volumes, networks
 echo -e "${BLUE}[2/5]${NC} Stopping Docker containers..."
 cd "$PROJECT_DIR"
-if docker compose ps -q 2>/dev/null | grep -q .; then
-    docker compose down -v --remove-orphans 2>/dev/null || true
-    echo -e "${GREEN}  ✓ Docker containers stopped and removed${NC}"
+
+# Use --profile app to catch all containers including taildeck-taildeck and caddy
+if docker compose --profile app ps -q 2>/dev/null | grep -q .; then
+    if [[ "$KEEP_CADDY" == "true" ]]; then
+        # Stop everything except Caddy - first stop without -v, then selectively remove
+        docker compose --profile app stop 2>/dev/null || true
+        # Start Caddy back up
+        docker compose up -d taildeck-caddy 2>/dev/null || true
+        # Remove non-Caddy containers and volumes
+        docker compose down -v --remove-orphans 2>/dev/null || true
+        echo -e "${GREEN}  ✓ Docker containers stopped (Caddy preserved)${NC}"
+    else
+        docker compose --profile app down -v --remove-orphans 2>/dev/null || true
+        echo -e "${GREEN}  ✓ Docker containers stopped and removed${NC}"
+    fi
 else
-    echo -e "${YELLOW}  - No running containers found${NC}"
+    # Fallback: manually stop containers that might have been started outside compose
+    echo -e "${YELLOW}  - No compose containers found, checking for orphans...${NC}"
+    for container in taildeck-taildeck taildeck-caddy headscale authentik-server authentik-worker authentik-postgres taildeck-postgres taildeck-goflow; do
+        if docker ps -a --format '{{.Names}}' | grep -q "^${container}$"; then
+            if [[ "$container" == "taildeck-caddy" && "$KEEP_CADDY" == "true" ]]; then
+                echo -e "${BLUE}  ℹ Keeping: $container${NC}"
+            else
+                docker rm -f "$container" 2>/dev/null || true
+                echo -e "${GREEN}  ✓ Removed: $container${NC}"
+            fi
+        fi
+    done
 fi
 
 # Double-check volumes are removed
@@ -82,7 +122,12 @@ rm -rf "$PROJECT_DIR/headscale/config.yaml" 2>/dev/null && echo -e "${GREEN}  �
 echo -e "${BLUE}[5/5]${NC} Verifying clean state..."
 echo ""
 
-containers=$(docker ps -a --filter "name=taildeck" --filter "name=headscale" --filter "name=authentik" -q 2>/dev/null | wc -l)
+# Count remaining containers (exclude Caddy if we're keeping it)
+if [[ "$KEEP_CADDY" == "true" ]]; then
+    containers=$(docker ps -a --filter "name=taildeck" --filter "name=headscale" --filter "name=authentik" --format '{{.Names}}' 2>/dev/null | grep -v "taildeck-caddy" | wc -l)
+else
+    containers=$(docker ps -a --filter "name=taildeck" --filter "name=headscale" --filter "name=authentik" -q 2>/dev/null | wc -l)
+fi
 # Check for volumes with lowercase project name (Docker Compose lowercases it)
 volumes=$(docker volume ls -q 2>/dev/null | grep -iE "^${PROJECT_NAME}_" | wc -l)
 
@@ -91,7 +136,11 @@ if [[ "$containers" -eq 0 && "$volumes" -eq 0 ]]; then
     echo -e "${GREEN}║              Cleanup Complete!                                 ║${NC}"
     echo -e "${GREEN}╚════════════════════════════════════════════════════════════════╝${NC}"
     echo ""
-    echo "Environment is now ready for a fresh install."
+    if [[ "$KEEP_CADDY" == "true" ]]; then
+        echo "Environment is now ready for a fresh install (Caddy preserved)."
+    else
+        echo "Environment is now ready for a fresh install."
+    fi
     echo ""
     echo -e "Run ${BLUE}./scripts/setup.sh${NC} to start a new installation."
 else
