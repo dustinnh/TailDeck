@@ -10,6 +10,8 @@
  * - Health checks
  */
 
+import { webcrypto } from 'crypto';
+
 import type { ZodType } from 'zod';
 
 import { logger } from '@/lib/logger';
@@ -697,7 +699,7 @@ class AuthentikClient {
   private generateClientSecret(): string {
     // Generate 32 random bytes and convert to hex
     const array = new Uint8Array(32);
-    crypto.getRandomValues(array);
+    webcrypto.getRandomValues(array);
     return Array.from(array, (byte) => byte.toString(16).padStart(2, '0')).join('');
   }
 }
