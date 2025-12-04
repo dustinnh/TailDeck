@@ -65,13 +65,13 @@ Just answer a few questions and you're ready to go. First user to sign in become
 
 ## Requirements
 
-| Requirement    | Minimum | Recommended |
-| -------------- | ------- | ----------- |
-| Docker         | 20.10+  | Latest      |
-| Docker Compose | 2.0+    | Latest      |
-| Node.js        | 18.0+   | 20.x LTS    |
-| RAM            | 4GB     | 8GB         |
-| Disk           | 10GB    | 20GB        |
+| Requirement    | Minimum  | Recommended |
+| -------------- | -------- | ----------- |
+| Docker         | 20.10+   | Latest      |
+| Docker Compose | 2.0+     | Latest      |
+| Node.js        | 20.19.6+ | 20.19.6 LTS |
+| RAM            | 4GB      | 8GB         |
+| Disk           | 10GB     | 20GB        |
 
 ---
 

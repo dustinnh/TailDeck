@@ -214,14 +214,14 @@ preflight_checks() {
     check_network "https://registry-1.docker.io/v2/" "Docker Hub" || ((warnings++))
     check_network "https://ghcr.io/v2/" "GitHub Container Registry" || ((warnings++))
 
-    # Check Node.js version
+    # Check Node.js version (20.19.6+)
     subheader "Runtime Versions"
     local node_version
     node_version=$(node -v 2>/dev/null | cut -d'v' -f2 | cut -d'.' -f1)
-    if [ -n "$node_version" ] && [ "$node_version" -ge 18 ]; then
+    if [ -n "$node_version" ] && [ "$node_version" -ge 20 ]; then
         result "success" "Node.js version: $(node -v)"
     else
-        result "error" "Node.js 18+ required (found: $(node -v 2>/dev/null || echo 'none'))"
+        result "error" "Node.js 20.19.6+ required (found: $(node -v 2>/dev/null || echo 'none'))"
         ((errors++))
     fi
 

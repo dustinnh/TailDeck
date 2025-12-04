@@ -47,8 +47,10 @@ Open http://localhost:3000 and complete the web setup wizard.
 | -------------- | --------------- | ------------------------ |
 | Docker         | 20.10+          | `docker --version`       |
 | Docker Compose | 2.0+            | `docker compose version` |
-| Node.js        | 18.0+           | `node --version`         |
-| npm            | 9.0+            | `npm --version`          |
+| Node.js        | 20.19.6+        | `node --version`         |
+| npm            | 10.0+           | `npm --version`          |
+
+> **Note**: Node.js 18 reached End of Life (EOL) on April 30, 2025. Node.js 20.19.6 LTS is recommended and supported until April 2026. Use `nvm install 20.19.6` or download from [nodejs.org](https://nodejs.org/).
 
 ### System Requirements
 

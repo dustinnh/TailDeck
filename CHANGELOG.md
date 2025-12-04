@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **Node.js Version Upgrade**: Standardized on Node.js 20.19.6 LTS
+  - Updated minimum Node.js requirement from 18.0+ to 20.19.6+ (Node 18 reached EOL April 30, 2025)
+  - Added `.nvmrc` file for consistent local development environment
+  - Pinned Dockerfile to `node:20.19.6-alpine` for reproducible builds
+  - Added `engines` field to package.json requiring Node.js >=20.19.6 and npm >=10.0.0
+  - Updated validation script to check for Node.js 20+ instead of 18+
+  - Updated documentation (README.md, SETUP.md) with new requirements and EOL notice
+
 ### Added
 
 - **Configurable Ports**: All service ports are now configurable via environment variables
@@ -59,6 +69,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Automatically runs `npm run build` for production deployments
   - Fixes OAuth login issues with incorrect localhost issuer URLs
 - **TypeScript Build**: Fixed unused parameter warning in `setup-authentik.ts`
+- **Setup Script**: Fixed `crypto is not defined` error in Authentik client by adding missing crypto import
 - **Headscale ACL Policy**: Fixed ACL Policy page 502 error by configuring default policy file path
   - Added `headscale/acls.json` with default allow-all ACL policy (SSH section removed - wildcards not supported in Headscale 0.27)
   - Updated `config.yaml.template` to set `policy.path: /etc/headscale/acls.json`

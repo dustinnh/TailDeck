@@ -6,7 +6,7 @@
 # =============================================
 
 # Base stage with Node.js
-FROM node:20-alpine AS base
+FROM node:20.19.6-alpine AS base
 RUN apk add --no-cache libc6-compat openssl
 WORKDIR /app
 
