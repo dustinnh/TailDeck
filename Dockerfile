@@ -40,6 +40,9 @@ ENV HEADSCALE_API_KEY="placeholder-api-key"
 
 RUN npm run build
 
+# Ensure public directory exists (may be empty)
+RUN mkdir -p /app/public
+
 # Runner stage (production)
 FROM base AS runner
 WORKDIR /app
