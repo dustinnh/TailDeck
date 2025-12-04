@@ -59,6 +59,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Automatically runs `npm run build` for production deployments
   - Fixes OAuth login issues with incorrect localhost issuer URLs
 - **TypeScript Build**: Fixed unused parameter warning in `setup-authentik.ts`
+- **Headscale ACL Policy**: Fixed ACL Policy page 502 error by configuring default policy file path
+  - Added `headscale/acls.json` with default allow-all policy
+  - Updated `config.yaml.template` to set `policy.path: /etc/headscale/acls.json`
+  - Mounted ACL file in docker-compose.yml for Headscale container
 - API keys page error when `lastSeen` is null (schema validation)
 - DNS page error handling for unsupported Headscale versions
 - Node online status detection for Headscale 0.27+

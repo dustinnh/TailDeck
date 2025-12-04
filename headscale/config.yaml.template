@@ -101,7 +101,7 @@ ephemeral_node_inactivity_timeout: 30m
 # "file" to load from a file, or "database" for API management
 policy:
   mode: file
-  path: ""
+  path: /etc/headscale/acls.json
 
 # Log configuration
 log:

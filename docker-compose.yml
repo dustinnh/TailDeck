@@ -130,6 +130,7 @@ services:
       - "${HEADSCALE_METRICS_PORT:-9090}:9090"
     volumes:
       - ./headscale/config.yaml:/etc/headscale/config.yaml:ro
+      - ./headscale/acls.json:/etc/headscale/acls.json
       - headscale_data:/var/lib/headscale
     healthcheck:
       test: ["CMD", "headscale", "health"]
