@@ -27,6 +27,17 @@ RUN npx prisma generate
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV NODE_ENV=production
 
+# Placeholder env vars for build time (required by Next.js static analysis)
+# These are overridden at runtime by actual values from docker-compose env_file
+ENV DATABASE_URL="postgresql://placeholder:placeholder@localhost:5432/placeholder"
+ENV AUTH_SECRET="placeholder-secret-at-least-32-chars-long"
+ENV AUTH_URL="http://localhost:3000"
+ENV AUTH_AUTHENTIK_ID="placeholder"
+ENV AUTH_AUTHENTIK_SECRET="placeholder"
+ENV AUTH_AUTHENTIK_ISSUER="http://localhost:9000/application/o/placeholder/"
+ENV HEADSCALE_URL="http://localhost:8080"
+ENV HEADSCALE_API_KEY="placeholder-api-key"
+
 RUN npm run build
 
 # Runner stage (production)
