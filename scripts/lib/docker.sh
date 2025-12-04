@@ -42,6 +42,29 @@ docker_up() {
     fi
 }
 
+# Start Docker services with Caddy reverse proxy (production)
+docker_up_with_caddy() {
+    local compose_cmd
+    compose_cmd=$(get_docker_compose_cmd)
+
+    log_info "Starting Docker services with Caddy reverse proxy..."
+
+    # Use --env-file to load .env.local and --profile app to include Caddy
+    if [ -f ".env.local" ]; then
+        $compose_cmd --env-file .env.local --profile app up -d
+    else
+        $compose_cmd --profile app up -d
+    fi
+
+    if [ $? -eq 0 ]; then
+        log_success "Docker services started (with Caddy)"
+        return 0
+    else
+        log_error "Failed to start Docker services"
+        return 1
+    fi
+}
+
 # Stop Docker services
 docker_down() {
     local compose_cmd
@@ -183,6 +206,30 @@ wait_for_all_services() {
 
     log_success "All services are running"
     return 0
+}
+
+# Wait for Caddy to be ready
+wait_for_caddy() {
+    log_info "Waiting for Caddy to start..."
+
+    # Caddy container name from docker-compose.yml
+    local max_attempts=30
+    local attempt=1
+
+    while [ $attempt -le $max_attempts ]; do
+        if container_running "taildeck-caddy"; then
+            log_success "Caddy is running"
+            return 0
+        fi
+
+        printf "."
+        sleep 2
+        attempt=$((attempt + 1))
+    done
+
+    echo ""
+    log_warn "Caddy may still be starting..."
+    return 1
 }
 
 # Pull latest images

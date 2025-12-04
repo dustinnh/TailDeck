@@ -213,12 +213,7 @@ services:
       - caddy_config:/config
     env_file:
       - path: .env.local
-        required: false
-    environment:
-      # Domain configuration (set in .env.local)
-      TAILDECK_DOMAIN: ${TAILDECK_DOMAIN:-localhost}
-      AUTHENTIK_DOMAIN: ${AUTHENTIK_DOMAIN:-localhost}
-      HEADSCALE_DOMAIN: ${HEADSCALE_DOMAIN:-localhost}
+        required: true
     depends_on:
       - authentik-server
       - headscale

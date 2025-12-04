@@ -339,13 +339,36 @@ fi
 
 step_next "Starting Docker Services"
 
+START_CADDY=false
+
 if [ "$SKIP_DOCKER" = true ]; then
     log_info "Skipping Docker services (--skip-docker)"
 else
-    docker_up
+    if [ "$TAILDECK_ENV" = "production" ]; then
+        # Production: offer to start Caddy reverse proxy for HTTPS
+        echo ""
+        log_info "Production mode detected."
+        log_info "Caddy provides automatic HTTPS with Let's Encrypt."
+        echo ""
+        if prompt_confirm "Start Caddy reverse proxy for HTTPS?" "y"; then
+            START_CADDY=true
+            docker_up_with_caddy
+        else
+            START_CADDY=false
+            docker_up
+        fi
+    else
+        # Development: no Caddy needed
+        docker_up
+    fi
 
     # Wait for all services
     wait_for_all_services
+
+    # Wait for Caddy if it was started
+    if [ "$START_CADDY" = true ]; then
+        wait_for_caddy
+    fi
 
     docker_status
 fi
@@ -537,19 +560,50 @@ echo -e "${BOLD}Next Steps:${NC}"
 
 if [ "$TAILDECK_ENV" = "production" ]; then
     # Production next steps
-    echo "  1. Complete Authentik initial setup:"
-    echo "     ${AUTHENTIK_PUBLIC_URL}/if/flow/initial-setup/"
+    if [ "$START_CADDY" = true ]; then
+        # Caddy is running - show HTTPS URLs
+        echo -e "${BOLD}Caddy Reverse Proxy:${NC}"
+        echo "  Caddy is running and will automatically obtain SSL certificates."
+        echo ""
+        echo "  Proxying:"
+        echo "    - https://${TAILDECK_DOMAIN} -> TailDeck"
+        echo "    - https://${AUTHENTIK_DOMAIN} -> Authentik"
+        echo "    - https://${HEADSCALE_DOMAIN} -> Headscale"
+        echo ""
+        echo "  1. Complete Authentik initial setup:"
+        echo "     https://${AUTHENTIK_DOMAIN}/if/flow/initial-setup/"
+        echo ""
+        echo "  2. Build and start TailDeck for production:"
+        echo ""
+        echo -e "     ${GREEN}npm run build && npm run start${NC}"
+        echo ""
+        echo "  3. Open https://${TAILDECK_DOMAIN}"
+        echo "  4. Sign in with Authentik - first user becomes OWNER"
+        echo ""
+        echo -e "${BOLD}Caddy Commands:${NC}"
+        echo "  - View Caddy logs:  docker compose logs -f caddy"
+        echo "  - Restart Caddy:    docker compose --profile app restart caddy"
+    else
+        # Caddy not started - show manual instructions
+        echo "  1. Complete Authentik initial setup:"
+        echo "     ${AUTHENTIK_PUBLIC_URL}/if/flow/initial-setup/"
+        echo ""
+        echo "  2. Build and start TailDeck for production:"
+        echo ""
+        echo -e "     ${GREEN}npm run build && npm run start${NC}"
+        echo ""
+        echo "  3. Open ${AUTH_URL}"
+        echo "  4. Sign in with Authentik - first user becomes OWNER"
+        echo ""
+        echo -e "${BOLD}To start Caddy reverse proxy:${NC}"
+        echo "  docker compose --profile app up -d caddy"
+        echo ""
+        echo -e "${BOLD}Production Notes:${NC}"
+        echo "  - Configure your reverse proxy for HTTPS"
+        echo "  - SSL certificates should be set up for all domains"
+    fi
     echo ""
-    echo "  2. Build and start TailDeck for production:"
-    echo ""
-    echo -e "     ${GREEN}npm run build && npm run start${NC}"
-    echo ""
-    echo "  3. Open ${AUTH_URL}"
-    echo "  4. Sign in with Authentik - first user becomes OWNER"
-    echo ""
-    echo -e "${BOLD}Production Notes:${NC}"
-    echo "  - Ensure your reverse proxy (Caddy/nginx) is configured"
-    echo "  - SSL certificates should be set up for all domains"
+    echo -e "${BOLD}General Notes:${NC}"
     echo "  - Run 'npm run build' after any .env.local changes"
 else
     # Development next steps
