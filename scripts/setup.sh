@@ -171,6 +171,21 @@ if [ ! -f ".env.local" ]; then
     fi
     log_success "Set HEADSCALE_URL to ${HEADSCALE_URL}"
 
+    # Derive domain names for Caddy reverse proxy
+    # Extract hostname from URLs (remove protocol and port)
+    AUTHENTIK_DOMAIN=$(echo "${AUTHENTIK_PUBLIC_URL:-$AUTHENTIK_URL}" | sed 's|https\?://||' | sed 's|:[0-9]*||' | sed 's|/.*||')
+    HEADSCALE_DOMAIN=$(echo "${HEADSCALE_URL}" | sed 's|https\?://||' | sed 's|:[0-9]*||' | sed 's|/.*||')
+
+    # Write domain configuration for Caddy
+    {
+        echo ""
+        echo "# Domain Configuration (for Caddy reverse proxy)"
+        echo "TAILDECK_DOMAIN=\"${TAILDECK_DOMAIN}\""
+        echo "AUTHENTIK_DOMAIN=\"${AUTHENTIK_DOMAIN}\""
+        echo "HEADSCALE_DOMAIN=\"${HEADSCALE_DOMAIN}\""
+    } >> .env.local
+    log_success "Set domain configuration for Caddy"
+
     # Write custom port configuration if selected
     if [ "$USE_CUSTOM_PORTS" = "true" ]; then
         log_info "Writing custom port configuration..."

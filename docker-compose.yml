@@ -195,6 +195,40 @@ services:
       start_period: 30s
     restart: unless-stopped
 
+  # ===========================================
+  # Caddy Reverse Proxy
+  # Provides SSL/TLS termination and HTTPS access
+  # ===========================================
+  caddy:
+    image: caddy:2-alpine
+    container_name: taildeck-caddy
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"  # HTTP/3 support
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    env_file:
+      - path: .env.local
+        required: false
+    environment:
+      # Domain configuration (set in .env.local)
+      TAILDECK_DOMAIN: ${TAILDECK_DOMAIN:-localhost}
+      AUTHENTIK_DOMAIN: ${AUTHENTIK_DOMAIN:-localhost}
+      HEADSCALE_DOMAIN: ${HEADSCALE_DOMAIN:-localhost}
+    depends_on:
+      - authentik-server
+      - headscale
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:80"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    profiles: ["app"]
+
 volumes:
   postgres_data:
   authentik_postgres_data:
@@ -202,3 +236,5 @@ volumes:
   authentik_templates:
   headscale_data:
   goflow_data:
+  caddy_data:
+  caddy_config:
