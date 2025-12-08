@@ -6,6 +6,22 @@ A modern web dashboard for managing [Headscale](https://headscale.net/) - the se
 
 **[Website](https://taildeck.org)** | **[Watch the Demo](https://youtu.be/xDxq1LksAJc)**
 
+**Status:** Phase 2 Complete | Phase 3 In Progress
+
+---
+
+## Screenshots
+
+|                Dashboard                |               Machines                |              Health               |
+| :-------------------------------------: | :-----------------------------------: | :-------------------------------: |
+| ![Dashboard](screenshots/dashboard.png) | ![Machines](screenshots/machines.png) | ![Health](screenshots/health.png) |
+|  _Overview with metrics and activity_   |   _Device management with bulk ops_   |    _Service health monitoring_    |
+
+|               Topology                |            Audit Log            |              Routes               |
+| :-----------------------------------: | :-----------------------------: | :-------------------------------: |
+| ![Topology](screenshots/topology.png) | ![Audit](screenshots/audit.png) | ![Routes](screenshots/routes.png) |
+|  _Interactive network visualization_  | _Comprehensive change tracking_ |  _Exit nodes and subnet routes_   |
+
 ---
 
 ## TL;DR - One-Command Install
@@ -179,7 +195,7 @@ See [SETUP.md](./SETUP.md#port-conflicts) for the full list of configurable port
 
 | Layer          | Technology                                         |
 | -------------- | -------------------------------------------------- |
-| Frontend       | Next.js 14, React 18, TanStack Query, Tailwind CSS |
+| Frontend       | Next.js 16, React 19, TanStack Query, Tailwind CSS |
 | UI Components  | shadcn/ui, Lucide Icons                            |
 | Backend        | Next.js API Routes, Prisma ORM                     |
 | Authentication | Auth.js v5 with Authentik OIDC                     |
@@ -280,6 +296,28 @@ See **[SETUP.md](./SETUP.md)** for production environment variables and TLS conf
 | OPERATOR | Machine management, routes, tags                 |
 | AUDITOR  | Read-only access to audit logs                   |
 | USER     | View own devices only (user portal)              |
+
+---
+
+## Roadmap
+
+### Completed
+
+- **Phase 1 (MVP)**: Core management, RBAC, device operations, ACL editor, audit logging
+- **Phase 2 (Observability)**: Network topology, health dashboard, server logs, NetFlow integration
+
+### Phase 3 – Advanced UX (In Progress)
+
+| Feature               | Description                                       | Status  |
+| --------------------- | ------------------------------------------------- | ------- |
+| Visual ACL Builder    | Drag-and-drop rule ordering with visual editor    | Planned |
+| ACL Templates         | Reusable policy templates library                 | Planned |
+| DNS Editing           | Full MagicDNS configuration with validation       | Planned |
+| Exit Node Wizard      | Guided exit node and Funnel/Serve setup           | Planned |
+| Multi-Instance        | Support for managing multiple Headscale instances | Planned |
+| Comprehensive Testing | Full test coverage for stability                  | Planned |
+
+Want to contribute? Check out our [CONTRIBUTING.md](./CONTRIBUTING.md) guide!
 
 ---
 
